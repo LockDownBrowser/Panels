@@ -6,7 +6,7 @@ const app = express();
 // Ensure 'files' directory exists
 const filesDir = path.join(__dirname, 'files');
 if (!fs.existsSync(filesDir)) {
-  fs.mkdirSync(filesDir);
+  fs.mkdirSync(filesDir, { recursive: true }); // Create recursively if needed
 }
 
 // Serve static files from the root directory
@@ -37,13 +37,13 @@ app.post('/login', (req, res) => {
   }
 });
 
-// File Manager APIs (protected by login, but for simplicity, assuming logged-in users access dashboard)
+// File Manager APIs
 
 // List files in 'files' directory
 app.get('/files/list', (req, res) => {
   fs.readdir(filesDir, (err, files) => {
     if (err) {
-      return res.status(500).json({ success: false, message: 'Error listing files' });
+      return res.status(500).json({ success: false, message: 'Error listing files: ' + err.message });
     }
     res.json({ success: true, files });
   });
@@ -56,9 +56,12 @@ app.get('/files/read', (req, res) => {
     return res.status(400).json({ success: false, message: 'Filename required' });
   }
   const filePath = path.join(filesDir, filename);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ success: false, message: 'File not found' });
+  }
   fs.readFile(filePath, 'utf8', (err, content) => {
     if (err) {
-      return res.status(500).json({ success: false, message: 'Error reading file' });
+      return res.status(500).json({ success: false, message: 'Error reading file: ' + err.message });
     }
     res.json({ success: true, content });
   });
@@ -73,7 +76,7 @@ app.post('/files/write', (req, res) => {
   const filePath = path.join(filesDir, filename);
   fs.writeFile(filePath, content, 'utf8', (err) => {
     if (err) {
-      return res.status(500).json({ success: false, message: 'Error writing file' });
+      return res.status(500).json({ success: false, message: 'Error writing file: ' + err.message });
     }
     res.json({ success: true });
   });
@@ -86,9 +89,12 @@ app.post('/files/delete', (req, res) => {
     return res.status(400).json({ success: false, message: 'Filename required' });
   }
   const filePath = path.join(filesDir, filename);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ success: false, message: 'File not found' });
+  }
   fs.unlink(filePath, (err) => {
     if (err) {
-      return res.status(500).json({ success: false, message: 'Error deleting file' });
+      return res.status(500).json({ success: false, message: 'Error deleting file: ' + err.message });
     }
     res.json({ success: true });
   });
