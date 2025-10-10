@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "Static file manager with login",
   "scripts": {
-    "start": "serve -s . -l $PORT"
+    "start": "node -e \"require('serve').default('.', { port: process.env.PORT })\""
   },
-  "devDependencies": {
+  "dependencies": {
     "serve": "^14.2.5"
   }
 }
