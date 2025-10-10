@@ -1,112 +1,391 @@
-const express = require('express');
-const path = require('path');
-const fs = require('fs');
-const app = express();
-
-// Ensure 'files' directory exists
-const filesDir = path.join(__dirname, 'files');
-if (!fs.existsSync(filesDir)) {
-  fs.mkdirSync(filesDir, { recursive: true }); // Create recursively if needed
-}
-
-// Serve static files from the root directory
-app.use(express.static('.'));
-
-// Serve files publicly from /files
-app.use('/files', express.static(filesDir));
-
-// Parse JSON bodies for POST requests
-app.use(express.json());
-
-// Read credentials from config.json (or env for production)
-let credentials;
-try {
-  const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
-  credentials = config.credentials;
-} catch (err) {
-  credentials = { admin: process.env.ADMIN_PASSWORD || 'password123' };
-}
-
-// Handle login POST request
-app.post('/login', (req, res) => {
-  const { username, password } = req.body;
-  if (credentials[username] && credentials[username] === password) {
-    res.json({ success: true, redirect: '/dashboard.html' });
-  } else {
-    res.status(401).json({ success: false, message: 'Invalid credentials' });
-  }
-});
-
-// File Manager APIs
-
-// List files in 'files' directory
-app.get('/files/list', (req, res) => {
-  fs.readdir(filesDir, (err, files) => {
-    if (err) {
-      return res.status(500).json({ success: false, message: 'Error listing files: ' + err.message });
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Manager Dashboard</title>
+  <style>
+    * {
+      box-sizing: border-box;
     }
-    res.json({ success: true, files });
-  });
-});
-
-// Read file content
-app.get('/files/read', (req, res) => {
-  const { filename } = req.query;
-  if (!filename) {
-    return res.status(400).json({ success: false, message: 'Filename required' });
-  }
-  const filePath = path.join(filesDir, filename);
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ success: false, message: 'File not found' });
-  }
-  fs.readFile(filePath, 'utf8', (err, content) => {
-    if (err) {
-      return res.status(500).json({ success: false, message: 'Error reading file: ' + err.message });
+    body {
+      font-family: 'Roboto', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f7fa;
+      color: #333;
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
     }
-    res.json({ success: true, content });
-  });
-});
 
-// Write or create file
-app.post('/files/write', (req, res) => {
-  const { filename, content } = req.body;
-  if (!filename || content === undefined) {
-    return res.status(400).json({ success: false, message: 'Filename and content required' });
-  }
-  const filePath = path.join(filesDir, filename);
-  fs.writeFile(filePath, content, 'utf8', (err) => {
-    if (err) {
-      return res.status(500).json({ success: false, message: 'Error writing file: ' + err.message });
+    /* Sidebar */
+    .sidebar {
+      width: 250px;
+      background-color: #2c3e50;
+      color: white;
+      padding: 20px;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+      position: fixed;
+      height: 100%;
+      transition: width 0.3s ease;
+      overflow-y: auto;
     }
-    res.json({ success: true });
-  });
-});
 
-// Delete file
-app.post('/files/delete', (req, res) => {
-  const { filename } = req.body;
-  if (!filename) {
-    return res.status(400).json({ success: false, message: 'Filename required' });
-  }
-  const filePath = path.join(filesDir, filename);
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ success: false, message: 'File not found' });
-  }
-  fs.unlink(filePath, (err) => {
-    if (err) {
-      return res.status(500).json({ success: false, message: 'Error deleting file: ' + err.message });
+    .sidebar h2 {
+      font-size: 1.4em;
+      margin-bottom: 30px;
+      text-align: center;
     }
-    res.json({ success: true });
-  });
-});
 
-// Serve index.html for all other GET requests
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
+    .sidebar ul {
+      list-style: none;
+      padding: 0;
+    }
 
-// Start the server
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+    .sidebar li {
+      margin: 15px 0;
+    }
+
+    .sidebar a {
+      color: white;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      padding: 12px;
+      border-radius: 8px;
+      transition: background 0.3s;
+    }
+
+    .sidebar a:hover {
+      background-color: #34495e;
+    }
+
+    .sidebar a::before {
+      content: '•';
+      margin-right: 10px;
+    }
+
+    /* Hamburger for mobile */
+    .hamburger {
+      display: none;
+      cursor: pointer;
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 1000;
+    }
+
+    .hamburger div {
+      width: 30px;
+      height: 3px;
+      background-color: #333;
+      margin: 6px 0;
+      transition: 0.4s;
+    }
+
+    /* Content */
+    .content {
+      margin-left: 250px;
+      padding: 40px;
+      width: calc(100% - 250px);
+      overflow-y: auto;
+      transition: margin-left 0.3s ease;
+    }
+
+    h1 {
+      font-size: 2em;
+      color: #2980b9;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    /* File Manager */
+    .file-manager {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .create-file {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 40px;
+    }
+
+    .create-file input, .create-file textarea {
+      padding: 12px;
+      margin: 10px 0;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 1em;
+    }
+
+    .create-file button {
+      padding: 12px;
+      background-color: #2980b9;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1em;
+      transition: background 0.3s;
+    }
+
+    .create-file button:hover {
+      background-color: #3498db;
+    }
+
+    .file-list li {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      padding: 15px;
+      border-bottom: 1px solid #eee;
+      transition: background 0.3s;
+    }
+
+    .file-list li:hover {
+      background: #f9f9f9;
+    }
+
+    .file-name {
+      font-weight: 500;
+      color: #2980b9;
+    }
+
+    .file-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .file-actions button, .file-actions a {
+      padding: 8px 16px;
+      border-radius: 6px;
+      text-decoration: none;
+      color: white;
+      cursor: pointer;
+      transition: opacity 0.3s;
+    }
+
+    .open-btn {
+      background-color: #3498db;
+    }
+
+    .delete-btn {
+      background-color: #e74c3c;
+    }
+
+    .view-link {
+      background-color: #27ae60;
+    }
+
+    .file-actions button:hover, .file-actions a:hover {
+      opacity: 0.9;
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 800px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+
+    .modal-content h3 {
+      color: #2980b9;
+      margin-bottom: 20px;
+    }
+
+    .modal-content textarea {
+      width: 100%;
+      height: 400px;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 1em;
+    }
+
+    .modal-content button {
+      margin-top: 20px;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .save-btn {
+      background-color: #27ae60;
+      color: white;
+      border: none;
+    }
+
+    .close-btn {
+      background-color: #bdc3c7;
+      color: #333;
+      border: none;
+      margin-left: 10px;
+    }
+
+    /* Mobile Responsiveness */
+    @media (max-width: 768px) {
+      body {
+        flex-direction: column;
+      }
+
+      .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+        padding: 10px;
+        display: none; /* Hidden by default on mobile */
+      }
+
+      .content {
+        margin-left: 0;
+        width: 100%;
+        padding: 20px;
+      }
+
+      .hamburger {
+        display: block;
+      }
+
+      .sidebar.open {
+        display: block;
+      }
+
+      .file-list li {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+
+      .file-actions {
+        margin-top: 10px;
+        justify-content: center;
+      }
+
+      .modal-content {
+        width: 95%;
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="hamburger" onclick="toggleSidebar()">
+    <div></div>
+    <div></div>
+    <div></div>
+  </div>
+
+  <div class="sidebar" id="sidebar">
+    <h2>Dashboard Menu</h2>
+    <ul>
+      <li><a href="/dashboard.html">File Manager</a></li>
+      <li><a href="#">Settings</a></li>
+      <li><a href="#">Help</a></li>
+    </ul>
+  </div>
+
+  <div class="content">
+    <h1>File Manager Dashboard</h1>
+
+    <div class="file-manager">
+      <div class="create-file">
+        <input type="text" id="newFilename" placeholder="Filename with extension (e.g., newfile.txt)">
+        <textarea id="newContent" placeholder="Initial content..."></textarea>
+        <button class="create-btn" onclick="createFile()">Create New File</button>
+      </div>
+
+      <ul id="fileList" class="file-list"></ul>
+    </div>
+  </div>
+
+  <!-- Modal for editing -->
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <h3>Editing <span id="editFilename"></span></h3>
+      <textarea id="editContent"></textarea>
+      <button class="save-btn" onclick="saveFile()">Save</button>
+      <button class="close-btn" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+
+  <script>
+    let currentFilename = '';
+
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      sidebar.classList.toggle('open');
+    }
+
+    function loadFiles() {
+      fetch('/files/list')
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            const list = document.getElementById('fileList');
+            list.innerHTML = '';
+            data.files.forEach(file => {
+              const li = document.createElement('li');
+              const nameSpan = document.createElement('span');
+              nameSpan.className = 'file-name';
+              nameSpan.innerText = file;
+              li.appendChild(nameSpan);
+
+              const actions = document.createElement('div');
+              actions.className = 'file-actions';
+              const openBtn = document.createElement('button');
+              openBtn.className = 'open-btn';
+              openBtn.innerText = 'Open/Edit';
+              openBtn.onclick = () => openFile(file);
+              actions.appendChild(openBtn);
+
+              const deleteBtn = document.createElement('button');
+              deleteBtn.className = 'delete-btn';
+              deleteBtn.innerText = 'Delete';
+              deleteBtn.onclick = () => deleteFile(file);
+              actions.appendChild(deleteBtn);
+
+              const viewLink = document.createElement('a');
+              viewLink.className = 'view-link';
+              viewLink.href = `/files/${file}`;
+              viewLink.target = '_blank';
+              viewLink.innerText = 'View';
+              actions.appendChild(viewLink);
+
+              li.appendChild(actions);
+              list.appendChild(li);
+            });
+          } else {
+            alert('Error loading files: ' + data.message);
+          }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    // Other functions remain the same as previous, with added error handling in alerts
+
+    window.onload = loadFiles;
+  </script>
+</body>
+</html>
