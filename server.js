@@ -6,7 +6,8 @@ const app = express();
 // Ensure 'files' directory exists
 const filesDir = path.join(__dirname, 'files');
 if (!fs.existsSync(filesDir)) {
-  fs.mkdirSync(filesDir, { recursive: true }); // Create recursively if needed
+  fs.mkdirSync(filesDir, { recursive: true });
+  console.log('Created files directory:', filesDir);
 }
 
 // Serve static files from the root directory
@@ -25,11 +26,19 @@ try {
   credentials = config.credentials;
 } catch (err) {
   credentials = { admin: process.env.ADMIN_PASSWORD || 'password123' };
+  console.log('Using default credentials or env variable:', credentials);
 }
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Server error:', err.stack);
+  res.status(500).json({ success: false, message: 'Internal server error' });
+});
 
 // Handle login POST request
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
+  console.log('Login attempt:', { username, password });
   if (credentials[username] && credentials[username] === password) {
     res.json({ success: true, redirect: '/dashboard.html' });
   } else {
@@ -43,9 +52,11 @@ app.post('/login', (req, res) => {
 app.get('/files/list', (req, res) => {
   fs.readdir(filesDir, (err, files) => {
     if (err) {
+      console.error('Error listing files:', err);
       return res.status(500).json({ success: false, message: 'Error listing files: ' + err.message });
     }
-    res.json({ success: true, files });
+    console.log('Files listed:', files);
+    res.json({ success: true, files: files || [] });
   });
 });
 
@@ -61,9 +72,11 @@ app.get('/files/read', (req, res) => {
   }
   fs.readFile(filePath, 'utf8', (err, content) => {
     if (err) {
+      console.error('Error reading file:', err);
       return res.status(500).json({ success: false, message: 'Error reading file: ' + err.message });
     }
-    res.json({ success: true, content });
+    console.log('File read:', filename);
+    res.json({ success: true, content: content || '' });
   });
 });
 
@@ -76,8 +89,10 @@ app.post('/files/write', (req, res) => {
   const filePath = path.join(filesDir, filename);
   fs.writeFile(filePath, content, 'utf8', (err) => {
     if (err) {
+      console.error('Error writing file:', err);
       return res.status(500).json({ success: false, message: 'Error writing file: ' + err.message });
     }
+    console.log('File written:', filename);
     res.json({ success: true });
   });
 });
@@ -94,8 +109,10 @@ app.post('/files/delete', (req, res) => {
   }
   fs.unlink(filePath, (err) => {
     if (err) {
+      console.error('Error deleting file:', err);
       return res.status(500).json({ success: false, message: 'Error deleting file: ' + err.message });
     }
+    console.log('File deleted:', filename);
     res.json({ success: true });
   });
 });
