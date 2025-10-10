@@ -1,11 +1,11 @@
 {
   "name": "static-file-manager",
   "version": "1.0.0",
-  "description": "Static file manager with login",
+  "description": "Static file manager with login and JavaScript",
   "scripts": {
-    "start": "node -e \"require('serve').default('.', { port: process.env.PORT })\""
+    "start": "node server.js"
   },
   "dependencies": {
-    "serve": "^14.2.5"
+    "express": "^4.19.2"
   }
 }
