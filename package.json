@@ -1,0 +1,11 @@
+{
+  "name": "static-file-manager",
+  "version": "1.0.0",
+  "description": "Static file manager with login",
+  "scripts": {
+    "start": "serve -s . -l $PORT"
+  },
+  "devDependencies": {
+    "serve": "^14.2.5"
+  }
+}
