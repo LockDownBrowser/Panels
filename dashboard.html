@@ -3,30 +3,146 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BlueLook File Manager</title>
+  <title>BlueLook Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-  <script src="/socket.io/socket.io.js"></script>
   <style>
-    /* Unchanged "Pretty" style from provided code */
-    .profits-tab {
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(to bottom, #e3f2fd, #bbdefb);
+      color: #212121;
+      line-height: 1.6;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 950px;
+      margin: 30px auto;
+      padding: 30px;
+      background: #ffffff;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+      border-radius: 24px;
       text-align: center;
     }
 
-    .total-profits {
-      font-size: 2em;
-      color: #27ae60;
-      margin-bottom: 20px;
+    h1 {
+      font-size: 2.5em;
+      color: #0d47a1;
+      margin-bottom: 0.6em;
+      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.15);
     }
 
-    .sales-form {
+    .dashboard-sections {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 40px;
+    }
+
+    .section-box {
+      background: linear-gradient(to bottom, #f9fbfd, #e3f2fd);
+      padding: 40px;
+      border-radius: 18px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+      text-align: center;
+      cursor: pointer;
+      flex: 1 1 300px;
+      max-width: 400px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+    }
+
+    .section-box:hover {
+      transform: translateY(-10px);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+      background: linear-gradient(to bottom, #e8f4fd, #d4eafd);
+    }
+
+    .section-box h2 {
+      font-size: 1.8em;
+      color: #0d47a1;
+      margin-bottom: 10px;
+    }
+
+    .section-box p {
+      font-size: 1em;
+      color: #424242;
+    }
+
+    .section-content {
+      display: none;
+      margin-top: 20px;
+    }
+
+    .back-button {
+      display: inline-block;
+      background: linear-gradient(to right, #2196f3, #1976d2);
+      color: #fff;
+      padding: 12px 24px;
+      font-size: 1em;
+      border: none;
+      border-radius: 10px;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.3s ease, transform 0.3s ease;
+      margin-bottom: 30px;
+    }
+
+    .back-button:hover {
+      background: linear-gradient(to right, #1976d2, #0d47a1);
+      transform: scale(1.05);
+    }
+
+    /* File Management Section Styles */
+    .file-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .file-item {
+      background: #f9fbfd;
+      padding: 15px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      margin-bottom: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: transform 0.3s ease;
+    }
+
+    .file-item:hover {
+      transform: translateY(-5px);
+    }
+
+    .file-actions button {
+      background: linear-gradient(to right, #2196f3, #1976d2);
+      color: #fff;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-left: 10px;
+      transition: background 0.3s ease;
+    }
+
+    .file-actions button:hover {
+      background: linear-gradient(to right, #1976d2, #0d47a1);
+    }
+
+    /* Profit Recording Section Styles */
+    .profits-form {
       display: flex;
       flex-direction: column;
       gap: 15px;
-      max-width: 400px;
-      margin: 0 auto 40px;
+      max-width: 500px;
+      margin: 0 auto;
     }
 
-    .sales-form select, .sales-form input {
+    .profits-form input, .profits-form select {
       padding: 12px;
       border: 1px solid #ddd;
       border-radius: 10px;
@@ -36,7 +152,7 @@
     .sales-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 20px;
+      margin-top: 30px;
     }
 
     .sales-table th, .sales-table td {
@@ -49,182 +165,490 @@
       background: #e3f2fd;
       color: #0d47a1;
     }
+
+    /* Mobile Responsiveness */
+    @media (max-width: 768px) {
+      .dashboard-sections {
+        flex-direction: column;
+      }
+
+      .section-box {
+        max-width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="hamburger" onclick="toggleSidebar()">&#9776;</div>
-  <div class="header">
-    <div class="logo">BlueLook</div>
-    <div class="welcome-box">Welcome, <span id="username">admin</span></div>
+  <div class="container">
+    <h1>BlueLook Dashboard</h1>
+
+    <div class="dashboard-sections">
+      <div class="section-box" onclick="showSection('fileManagement')">
+        <h2>File Managing</h2>
+        <p>Manage your files, upload, edit, and delete.</p>
+      </div>
+      <div class="section-box" onclick="showSection('profitRecording')">
+        <h2>Profit Recording</h2>
+        <p>Log sales, view records, and track total profits.</p>
+      </div>
+    </div>
+
+    <!-- File Management Section -->
+    <div id="fileManagement" class="section-content">
+      <button class="back-button" onclick="backToDashboard()">Back to Dashboard</button>
+      <h1>File Management</h1>
+      <ul class="file-list" id="fileList"></ul>
+      <button class="cta-button" onclick="showCreateModal()">Create New File</button>
+    </div>
+
+    <!-- Profit Recording Section */
+    <div id="profitRecording" class="section-content">
+      <button class="back-button" onclick="backToDashboard()">Back to Dashboard</button>
+      <h1>Profit Recording</h1>
+      <div class="profits-form">
+        <label for="clientDiscord">Client Discord:</label>
+        <input type="text" id="clientDiscord" placeholder="e.g., user#1234">
+        <label for="bypassType">Bypass Type:</label>
+        <select id="bypassType">
+          <option value="">Select type...</option>
+          <option value="Lockdown Browser Premium">Lockdown Browser Premium</option>
+          <option value="Lockdown Browser Standard">Lockdown Browser Standard</option>
+          <option value="SAT/AP/PSAT Premium">SAT/AP/PSAT Premium</option>
+          <option value="SAT/AP/PSAT Standard">SAT/AP/PSAT Standard</option>
+          <option value="ACT Standard">ACT Standard</option>
+        </select>
+        <label for="amount">Amount (USD):</label>
+        <input type="number" id="amount" placeholder="e.g., 390">
+        <button class="cta-button" onclick="logSale()">Log Sale</button>
+      </div>
+      <div class="total-profits">Total Profits: $<span id="totalProfits">0</span></div>
+      <table class="sales-table" id="salesTable">
+        <thead>
+          <tr>
+            <th>Client Discord</th>
+            <th>Bypass Type</th>
+            <th>Amount (USD)</th>
+            <th>Timestamp</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </div>
 
-  <div class="sidebar" id="sidebar">
-    <h2>Menu</h2>
-    <ul>
-      <li><a href="#" onclick="showTab('fileManager')">File Manager</a></li>
-      <li><a href="#" onclick="showTab('ticketing')">Ticketing System</a></li>
-      <li><a href="#" onclick="showTab('profits')">Profits</a></li>
-    </ul>
-  </div>
-
-  <div class="content">
-    <div class="manager-container">
-      <h1>File Manager</h1>
-      <button class="logout-btn" onclick="logout()">Logout</button>
-
-      <div class="tabs">
-        <button class="tab-button active" onclick="showTab('fileManager')">File Manager</button>
-        <button class="tab-button" onclick="showTab('ticketing')">Ticketing System</button>
-        <button class="tab-button" onclick="showTab('profits')">Profits</button>
-      </div>
-
-      <!-- File Manager Tab -->
-      <div id="fileManager" class="tab-content active">
-        <ul class="file-list" id="fileList"></ul>
-        <button class="create-fab" onclick="showCreateModal()">+</button>
-      </div>
-
-      <!-- Ticketing System Tab -->
-      <div id="ticketing" class="tab-content">
-        <div class="ticketing-form">
-          <label for="product">Choose Product:</label>
-          <select id="product">
-            <option value="">Select a product...</option>
-            <option value="SAT/AP/PSAT Bypass - Standard">SAT/AP/PSAT Bypass - Standard</option>
-            <option value="SAT/AP/PSAT Bypass - Premium">SAT/AP/PSAT Bypass - Premium</option>
-            <option value="ACT Bypass - Standard">ACT Bypass - Standard</option>
-            <option value="Lockdown Browser - Standard">Lockdown Browser - Standard</option>
-            <option value="Lockdown Browser - Premium">Lockdown Browser - Premium</option>
-          </select>
-          <label for="discordEmail">Discord Username or Email:</label>
-          <input type="text" id="discordEmail" placeholder="e.g., user#1234 or user@example.com">
-          <button class="cta-button" onclick="createTicket()">Create Ticket</button>
-        </div>
-        <div id="chatContainer" class="chat-container">
-          <h3>Ticket #<span id="ticketId"></span></h3>
-          <ul id="messages" class="chat-messages"></ul>
-          <div class="chat-input">
-            <input type="text" id="messageInput" placeholder="Type your message...">
-            <button onclick="sendMessage()">Send</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Profits Tab -->
-      <div id="profits" class="tab-content profits-tab">
-        <div class="total-profits">Total Profits: $<span id="totalProfits">0</span></div>
-        <div class="sales-form">
-          <label for="clientDiscord">Client Discord:</label>
-          <input type="text" id="clientDiscord" placeholder="e.g., user#1234">
-          <label for="bypassType">Bypass Type:</label>
-          <select id="bypassType">
-            <option value="">Select type...</option>
-            <option value="Lockdown Browser Premium">Lockdown Browser Premium</option>
-            <option value="Lockdown Browser Standard">Lockdown Browser Standard</option>
-            <option value="SAT/AP/PSAT Premium">SAT/AP/PSAT Premium</option>
-            <option value="SAT/AP/PSAT Standard">SAT/AP/PSAT Standard</option>
-            <option value="ACT Standard">ACT Standard</option>
-          </select>
-          <label for="amount">Amount (USD):</label>
-          <input type="number" id="amount" placeholder="e.g., 390">
-          <button class="cta-button" onclick="logSale()">Log Sale</button>
-        </div>
-        <table class="sales-table" id="salesTable">
-          <thead>
-            <tr>
-              <th>Client Discord</th>
-              <th>Bypass Type</th>
-              <th>Amount (USD)</th>
-              <th>Timestamp</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+  <!-- Create File Modal -->
+  <div id="createModal" class="modal">
+    <div class="modal-content">
+      <h3>Create New File</h3>
+      <input type="text" id="newFilename" placeholder="Filename (e.g., note.txt)">
+      <textarea id="newContent" placeholder="Enter content here..."></textarea>
+      <div class="buttons">
+        <button class="save-btn" onclick="createFile()">Create</button>
+        <button class="close-btn" onclick="closeModal()">Cancel</button>
       </div>
     </div>
   </div>
 
-  <!-- Unchanged Modals -->
+  <!-- Edit File Modal -->
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <h3>Editing <span id="editFilename"></span></h3>
+      <textarea id="editContent"></textarea>
+      <div class="buttons">
+        <button class="save-btn" onclick="saveFile()">Save</button>
+        <button class="close-btn" onclick="closeModal()">Close</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     let currentFilename = '';
-    let ticketId = '';
-    let user = 'user'; // Mock user, replace with login response
-    let isAdmin = false; // Mock isAdmin, replace with login response
 
-    // Unchanged functions for file manager and ticketing
+    function showSection(sectionId) {
+      document.querySelectorAll('.dashboard-sections, .section-content').forEach(el => el.style.display = 'none');
+      document.getElementById(sectionId).style.display = 'block';
+    }
 
-    // Profits Tab Functions
-    function loadSales() {
-      fetch('/sales/list')
+    function backToDashboard() {
+      document.querySelectorAll('.dashboard-sections').forEach(el => el.style.display = 'flex');
+      document.querySelectorAll('.section-content').forEach(el => el.style.display = 'none');
+    }
+
+    // Load and display files
+    function loadFiles() {
+      fetch('/files/list')
         .then(response => response.json())
         .then(data => {
           if (data.success) {
-            const tableBody = document.getElementById('salesTable').querySelector('tbody');
-            tableBody.innerHTML = '';
-            data.sales.forEach(sale => {
-              const row = document.createElement('tr');
-              row.innerHTML = `
-                <td>${sale.discord}</td>
-                <td>${sale.bypassType}</td>
-                <td>$${sale.amount.toFixed(2)}</td>
-                <td>${new Date(sale.timestamp).toLocaleString()}</td>
-              `;
-              tableBody.appendChild(row);
-            });
-            document.getElementById('totalProfits').textContent = data.total.toFixed(2);
+            const list = document.getElementById('fileList');
+            list.innerHTML = '';
+            if (data.files.length === 0) {
+              list.innerHTML = '<li class="file-item">No files available.</li>';
+            } else {
+              data.files.forEach(file => {
+                const li = document.createElement('li');
+                li.className = 'file-item';
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'file-name';
+                nameSpan.textContent = file;
+                li.appendChild(nameSpan);
+
+                const actions = document.createElement('div');
+                actions.className = 'file-actions';
+                const openBtn = document.createElement('button');
+                openBtn.className = 'open-btn';
+                openBtn.textContent = 'Open/Edit';
+                openBtn.onclick = () => openFile(file);
+                actions.appendChild(openBtn);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.onclick = () => deleteFile(file);
+                actions.appendChild(deleteBtn);
+
+                const viewLink = document.createElement('a');
+                viewLink.className = 'view-link';
+                viewLink.href = `/files/${encodeURIComponent(file)}`;
+                viewLink.target = '_blank';
+                viewLink.textContent = 'View';
+                actions.appendChild(viewLink);
+
+                li.appendChild(actions);
+                list.appendChild(li);
+              });
+            }
           } else {
-            alert('Error loading sales: ' + data.message);
+            alert('Error loading files: ' + data.message);
           }
         })
         .catch(error => {
-          console.error('Error loading sales:', error);
-          alert('Failed to load sales. Check console.');
+          console.error('Fetch error:', error);
+          alert('Failed to load files. Check console for details.');
         });
     }
 
-    function logSale() {
-      const discord = document.getElementById('clientDiscord').value.trim();
-      const bypassType = document.getElementById('bypassType').value;
-      const amount = parseFloat(document.getElementById('amount').value);
-      if (!discord || !bypassType || isNaN(amount) || amount <= 0) {
-        alert('Please fill all fields correctly.');
+    // Create a new file
+    function createFile() {
+      const filename = document.getElementById('newFilename').value.trim();
+      const content = document.getElementById('newContent').value.trim();
+      if (!filename || !content) {
+        alert('Please enter a filename and content.');
         return;
       }
-      fetch('/sales/log', {
+      if (!/\.(txt|js|html)$/.test(filename)) {
+        alert('Filename must end with .txt, .js, or .html');
+        return;
+      }
+      fetch('/files/write', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ discord, bypassType, amount })
+        body: JSON.stringify({ filename, content })
       })
       .then(response => response.json())
       .then(data => {
         if (data.success) {
-          document.getElementById('clientDiscord').value = '';
-          document.getElementById('bypassType').value = '';
-          document.getElementById('amount').value = '';
-          loadSales();
-          alert('Sale logged successfully!');
+          closeModal();
+          loadFiles();
+          alert('File created successfully!');
         } else {
           alert('Error: ' + data.message);
         }
       })
       .catch(error => {
-        console.error('Error logging sale:', error);
-        alert('Failed to log sale. Check console.');
+        console.error('Error creating file:', error);
+        alert('Failed to create file. Check console.');
       });
     }
 
-    // Load data on page load
-    window.onload = () => {
-      loadFiles();
-      loadTickets(); // If you have a loadTickets function
-      showTab('fileManager'); // Default tab
-      if (isAdmin) {
-        loadSales();
-      } else {
-        document.getElementById('profits').innerHTML = '<p>Access restricted to admins.</p>';
+    // Open file for editing
+    function openFile(filename) {
+      fetch(`/files/read?filename=${encodeURIComponent(filename)}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            currentFilename = filename;
+            document.getElementById('editFilename').textContent = filename;
+            document.getElementById('editContent').value = data.content || '';
+            document.getElementById('editModal').style.display = 'flex';
+          } else {
+            alert('Error: ' + data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error opening file:', error);
+          alert('Failed to open file. Check console.');
+        });
+    }
+
+    // Save edited file
+    function saveFile() {
+      const content = document.getElementById('editContent').value;
+      if (!content) {
+        alert('Please enter some content to save.');
+        return;
       }
-    };
+      fetch('/files/write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: currentFilename, content })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          closeModal();
+          loadFiles();
+          alert('File saved successfully!');
+        } else {
+          alert('Error: ' + data.message);
+        }
+      })
+      .catch(error => {
+        console.error('Error saving file:', error);
+        alert('Failed to save file. Check console.');
+      });
+    }
+
+    // Delete file
+    function deleteFile(filename) {
+      if (confirm(`Are you sure you want to delete ${filename}?`)) {
+        fetch('/files/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            loadFiles();
+            alert('File deleted successfully!');
+          } else {
+            alert('Error: ' + data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error deleting file:', error);
+          alert('Failed to delete file. Check console.');
+        });
+      }
+    }
+
+    // Close modal
+    function closeModal() {
+      const modals = document.querySelectorAll('.modal');
+      modals.forEach(modal => modal.style.display = 'none');
+    }
+
+    // Logout
+    function logout() {
+      window.location.href = '/index.html'; // Adjust to your login page
+    }
+
+    // Load files on page load
+    window.onload = loadFiles;
   </script>
 </body>
 </html>
+``````javascript
+const express = require('express');
+const http = require('http');
+const path = require('path');
+const fs = require('fs');
+const socketIo = require('socket.io');
+const app = express();
+const server = http.createServer(app);
+const io = socketIo(server);
+
+// Dynamically create directories if they don't exist
+const filesDir = path.join(__dirname, 'files');
+const ticketsDir = path.join(__dirname, 'tickets');
+const archivedTicketsDir = path.join(ticketsDir, 'archived');
+if (!fs.existsSync(filesDir)) {
+  fs.mkdirSync(filesDir, { recursive: true });
+  console.log('Created files directory:', filesDir);
+}
+if (!fs.existsSync(ticketsDir)) {
+  fs.mkdirSync(ticketsDir, { recursive: true });
+  console.log('Created tickets directory:', ticketsDir);
+}
+if (!fs.existsSync(archivedTicketsDir)) {
+  fs.mkdirSync(archivedTicketsDir, { recursive: true });
+  console.log('Created archived tickets directory:', archivedTicketsDir);
+}
+
+// Serve static files from the root directory
+app.use(express.static('.'));
+
+// Serve files publicly from /files
+app.use('/files', express.static(filesDir));
+
+// Parse JSON bodies for POST requests
+app.use(express.json());
+
+// Read credentials from config.json (or env for production)
+let credentials;
+try {
+  const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
+  credentials = config.credentials;
+  console.log('Loaded credentials:', Object.keys(credentials));
+} catch (err) {
+  credentials = { admin: process.env.ADMIN_PASSWORD || 'password123' };
+  console.log('Using default credentials:', credentials);
+}
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Server error:', err.stack);
+  res.status(500).json({ success: false, message: 'Internal server error' });
+});
+
+// Handle login POST request (include user info for welcome)
+app.post('/login', (req, res) => {
+  const { username, password } = req.body;
+  console.log('Login attempt:', { username, password });
+  if (credentials[username] && credentials[username] === password) {
+    res.json({ success: true, redirect: '/dashboard.html', user: { username, isAdmin: username === 'admin' } });
+  } else {
+    res.status(401).json({ success: false, message: 'Invalid credentials' });
+  }
+});
+
+// File Manager APIs
+app.get('/files/list', (req, res) => {
+  fs.readdir(filesDir, (err, files) => {
+    if (err) {
+      console.error('Error listing files:', err);
+      return res.status(500).json({ success: false, message: 'Error listing files: ' + err.message });
+    }
+    console.log('Files listed:', files);
+    res.json({ success: true, files: files || [] });
+  });
+});
+
+app.get('/files/read', (req, res) => {
+  const { filename } = req.query;
+  if (!filename) return res.status(400).json({ success: false, message: 'Filename required' });
+  const filePath = path.join(filesDir, filename);
+  if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, message: 'File not found' });
+  fs.readFile(filePath, 'utf8', (err, content) => {
+    if (err) {
+      console.error('Error reading file:', err);
+      return res.status(500).json({ success: false, message: 'Error reading file: ' + err.message });
+    }
+    console.log('File read:', filename);
+    res.json({ success: true, content: content || '' });
+  });
+});
+
+app.post('/files/write', (req, res) => {
+  const { filename, content } = req.body;
+  if (!filename || content === undefined) return res.status(400).json({ success: false, message: 'Filename and content required' });
+  const filePath = path.join(filesDir, filename);
+  fs.writeFile(filePath, content, 'utf8', (err) => {
+    if (err) {
+      console.error('Error writing file:', err);
+      return res.status(500).json({ success: false, message: 'Error writing file: ' + err.message });
+    }
+    console.log('File written:', filename);
+    res.json({ success: true });
+  });
+});
+
+app.post('/files/delete', (req, res) => {
+  const { filename } = req.body;
+  if (!filename) return res.status(400).json({ success: false, message: 'Filename required' });
+  const filePath = path.join(filesDir, filename);
+  if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, message: 'File not found' });
+  fs.unlink(filePath, (err) => {
+    if (err) {
+      console.error('Error deleting file:', err);
+      return res.status(500).json({ success: false, message: 'Error deleting file: ' + err.message });
+    }
+    console.log('File deleted:', filename);
+    res.json({ success: true });
+  });
+});
+
+// Ticketing System APIs
+app.post('/tickets/create', (req, res) => {
+  const { product, discordEmail } = req.body;
+  if (!product || !discordEmail) return res.status(400).json({ success: false, message: 'Product and Discord/Email required' });
+  const ticketId = Date.now().toString();
+  const ticketDir = path.join(ticketsDir, ticketId);
+  fs.mkdirSync(ticketDir, { recursive: true });
+  const ticketPath = path.join(ticketDir, 'ticket.json');
+  const ticket = {
+    id: ticketId,
+    product,
+    discordEmail,
+    messages: [{ timestamp: new Date().toISOString(), author: 'System', text: `Ticket created for ${product}. Discord/Email: ${discordEmail}` }],
+    visibleTo: ['admin', discordEmail]
+  };
+  fs.writeFile(ticketPath, JSON.stringify(ticket, null, 2), (err) => {
+    if (err) {
+      console.error('Error creating ticket:', err);
+      return res.status(500).json({ success: false, message: 'Error creating ticket' });
+    }
+    console.log('Ticket created:', ticketId);
+    res.json({ success: true, ticketId });
+  });
+});
+
+app.get('/tickets/:id', (req, res) => {
+  const ticketDir = path.join(ticketsDir, req.params.id);
+  const ticketPath = path.join(ticketDir, 'ticket.json');
+  if (!fs.existsSync(ticketPath)) return res.status(404).json({ success: false, message: 'Ticket not found' });
+  fs.readFile(ticketPath, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Error reading ticket:', err);
+      return res.status(500).json({ success: false, message: 'Error reading ticket' });
+    }
+    res.json({ success: true, ticket: JSON.parse(data) });
+  });
+});
+
+app.post('/tickets/:id/message', (req, res) => {
+  const { text, author } = req.body;
+  if (!text || !author) return res.status(400).json({ success: false, message: 'Text and author required' });
+  const ticketDir = path.join(ticketsDir, req.params.id);
+  const ticketPath = path.join(ticketDir, 'ticket.json');
+  if (!fs.existsSync(ticketPath)) return res.status(404).json({ success: false, message: 'Ticket not found' });
+  fs.readFile(ticketPath, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Error reading ticket for message:', err);
+      return res.status(500).json({ success: false, message: 'Error adding message' });
+    }
+    const ticket = JSON.parse(data);
+    ticket.messages.push({ timestamp: new Date().toISOString(), author, text });
+    fs.writeFile(ticketPath, JSON.stringify(ticket, null, 2), (err) => {
+      if (err) {
+        console.error('Error saving message:', err);
+        return res.status(500).json({ success: false, message: 'Error saving message' });
+      }
+      io.to(req.params.id).emit('newMessage', { timestamp: new Date().toISOString(), author, text });
+      res.json({ success: true });
+    });
+  });
+});
+
+// Socket.io for live chat updates
+io.on('connection', (socket) => {
+  socket.on('joinTicket', (ticketId) => {
+    socket.join(ticketId);
+    console.log('User joined ticket:', ticketId);
+  });
+  socket.on('disconnect', () => {
+    console.log('User disconnected');
+  });
+});
+
+// Serve dashboard.html for all unmatched GET requests
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard.html'));
+});
+
+// Start the server
+const port = process.env.PORT || 3000;
+server.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
