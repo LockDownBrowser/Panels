@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BlueLook Ticketing System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(to bottom, #e3f2fd, #bbdefb);
+      color: #212121;
+      line-height: 1.6;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 950px;
+      margin: 30px auto;
+      padding: 30px;
+      background: #ffffff;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+      border-radius: 24px;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 2.5em;
+      color: #0d47a1;
+      margin-bottom: 0.6em;
+      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.15);
+    }
+
+    .subtitle {
+      font-size: 1.2em;
+      color: #424242;
+      margin-bottom: 30px;
+    }
+
+    .product-selection {
+      margin-bottom: 20px;
+    }
+
+    .product-selection select {
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      font-size: 1em;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .input-group {
+      margin-bottom: 20px;
+    }
+
+    .input-group input {
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      font-size: 1em;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .cta-button {
+      display: inline-block;
+      background: linear-gradient(to right, #2196f3, #1976d2);
+      color: #fff;
+      padding: 14px 28px;
+      font-size: 1.1em;
+      border: none;
+      border-radius: 10px;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.3s ease, transform 0.3s ease;
+      margin-bottom: 20px;
+    }
+
+    .cta-button:hover {
+      background: linear-gradient(to right, #1976d2, #0d47a1);
+      transform: scale(1.1);
+    }
+
+    .chat-container {
+      display: none;
+      background: #f9fbfd;
+      border-radius: 12px;
+      padding: 20px;
+      max-height: 500px;
+      overflow-y: auto;
+      margin-top: 20px;
+    }
+
+    .chat-messages {
+      list-style: none;
+      padding: 0;
+    }
+
+    .chat-messages li {
+      margin-bottom: 10px;
+      padding: 10px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+
+    .message-author {
+      font-weight: 600;
+      color: #0d47a1;
+    }
+
+    .message-time {
+      font-size: 0.8em;
+      color: #757575;
+    }
+
+    .message-text {
+      margin-top: 5px;
+    }
+
+    .chat-input {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .chat-input input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+
+    .chat-input button {
+      padding: 10px 20px;
+      background: linear-gradient(to right, #2196f3, #1976d2);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .chat-input button:hover {
+      background: linear-gradient(to right, #1976d2, #0d47a1);
+    }
+
+    /* Mobile responsiveness */
+    @media (max-width: 768px) {
+      .container {
+        margin: 20px;
+        padding: 20px;
+        border-radius: 16px;
+      }
+
+      h1 {
+        font-size: 2em;
+      }
+
+      .subtitle {
+        font-size: 1em;
+      }
+
+      .cta-button {
+        padding: 12px 24px;
+        font-size: 1em;
+      }
+
+      .chat-input {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Support Ticketing</h1>
+    <p class="subtitle">Select your product and provide your Discord username or email to open a ticket.</p>
+
+    <div class="product-selection">
+      <label for="product">Choose Product:</label>
+      <select id="product">
+        <option value="">Select a product...</option>
+        <option value="SAT/AP/PSAT Bypass - Standard">SAT/AP/PSAT Bypass - Standard</option>
+        <option value="SAT/AP/PSAT Bypass - Premium">SAT/AP/PSAT Bypass - Premium</option>
+        <option value="ACT Bypass - Standard">ACT Bypass - Standard</option>
+        <option value="Lockdown Browser - Standard">Lockdown Browser - Standard</option>
+        <option value="Lockdown Browser - Premium">Lockdown Browser - Premium</option>
+      </select>
+    </div>
+
+    <div class="input-group">
+      <label for="discordEmail">Discord Username or Email:</label>
+      <input type="text" id="discordEmail" placeholder="e.g., user#1234 or user@example.com">
+    </div>
+
+    <button class="cta-button" onclick="createTicket()">Create Ticket</button>
+
+    <div id="chatContainer" class="chat-container">
+      <h3>Ticket #<span id="ticketId"></span></h3>
+      <ul id="messages" class="chat-messages"></ul>
+      <div class="chat-input">
+        <input type="text" id="messageInput" placeholder="Type your message...">
+        <button onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+    let ticketId = '';
+    let user = 'user'; // Replace with actual user from login
+
+    function createTicket() {
+      const product = document.getElementById('product').value;
+      const discordEmail = document.getElementById('discordEmail').value.trim();
+      if (!product || !discordEmail) {
+        alert('Please select a product and enter your Discord username or email.');
+        return;
+      }
+      fetch('/tickets/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product, discordEmail })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          ticketId = data.ticketId;
+          document.getElementById('ticketId').textContent = ticketId;
+          document.getElementById('chatContainer').style.display = 'block';
+          socket.emit('joinTicket', ticketId);
+          loadMessages();
+          alert('Ticket created! Chat below.');
+        } else {
+          alert('Error: ' + data.message);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to create ticket.');
+      });
+    }
+
+    function loadMessages() {
+      fetch(`/tickets/${ticketId}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            const messages = document.getElementById('messages');
+            messages.innerHTML = '';
+            data.ticket.messages.forEach(msg => {
+              const li = document.createElement('li');
+              li.innerHTML = `
+                <div class="message-author">${msg.author}</div>
+                <div class="message-time">${new Date(msg.timestamp).toLocaleString()}</div>
+                <div class="message-text">${msg.text}</div>
+              `;
+              messages.appendChild(li);
+            });
+            messages.scrollTop = messages.scrollHeight;
+          }
+        })
+        .catch(error => console.error('Error loading messages:', error));
+    }
+
+    function sendMessage() {
+      const text = document.getElementById('messageInput').value.trim();
+      if (!text) return;
+      fetch(`/tickets/${ticketId}/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, author: user })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('messageInput').value = '';
+          loadMessages(); // Reload to update UI
+        }
+      })
+      .catch(error => console.error('Error sending message:', error));
+    }
+
+    // Listen for new messages
+    socket.on('newMessage', (msg) => {
+      loadMessages();
+    });
+
+    // Enter key to send message
+    document.getElementById('messageInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+  </script>
+</body>
+</html>
