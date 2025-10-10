@@ -1,14 +1,17 @@
 const express = require('express');
+const http = require('http');
 const path = require('path');
 const fs = require('fs');
+const socketIo = require('socket.io');
 const app = express();
+const server = http.createServer(app);
+const io = socketIo(server);
 
-// Ensure 'files' directory exists
+// Ensure directories exist
 const filesDir = path.join(__dirname, 'files');
-if (!fs.existsSync(filesDir)) {
-  fs.mkdirSync(filesDir, { recursive: true });
-  console.log('Created files directory:', filesDir);
-}
+const ticketsDir = path.join(__dirname, 'tickets');
+if (!fs.existsSync(filesDir)) fs.mkdirSync(filesDir, { recursive: true });
+if (!fs.existsSync(ticketsDir)) fs.mkdirSync(ticketsDir, { recursive: true });
 
 // Serve static files from the root directory
 app.use(express.static('.'));
@@ -26,7 +29,6 @@ try {
   credentials = config.credentials;
 } catch (err) {
   credentials = { admin: process.env.ADMIN_PASSWORD || 'password123' };
-  console.log('Using default credentials or env variable:', credentials);
 }
 
 // Error handling middleware
@@ -35,20 +37,18 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: 'Internal server error' });
 });
 
-// Handle login POST request
+// Handle login POST request (add isAdmin flag for future admin checks)
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
   console.log('Login attempt:', { username, password });
   if (credentials[username] && credentials[username] === password) {
-    res.json({ success: true, redirect: '/dashboard.html' });
+    res.json({ success: true, redirect: '/dashboard.html', user: { username, isAdmin: username === 'admin' } });
   } else {
     res.status(401).json({ success: false, message: 'Invalid credentials' });
   }
 });
 
-// File Manager APIs
-
-// List files in 'files' directory
+// File Manager APIs (unchanged from previous)
 app.get('/files/list', (req, res) => {
   fs.readdir(filesDir, (err, files) => {
     if (err) {
@@ -60,7 +60,6 @@ app.get('/files/list', (req, res) => {
   });
 });
 
-// Read file content
 app.get('/files/read', (req, res) => {
   const { filename } = req.query;
   if (!filename) {
@@ -80,7 +79,6 @@ app.get('/files/read', (req, res) => {
   });
 });
 
-// Write or create file
 app.post('/files/write', (req, res) => {
   const { filename, content } = req.body;
   if (!filename || content === undefined) {
@@ -97,7 +95,6 @@ app.post('/files/write', (req, res) => {
   });
 });
 
-// Delete file
 app.post('/files/delete', (req, res) => {
   const { filename } = req.body;
   if (!filename) {
@@ -117,6 +114,89 @@ app.post('/files/delete', (req, res) => {
   });
 });
 
+// Ticketing System APIs
+app.post('/tickets/create', (req, res) => {
+  const { product, discordEmail } = req.body;
+  if (!product || !discordEmail) {
+    return res.status(400).json({ success: false, message: 'Product and Discord/Email required' });
+  }
+  const ticketId = Date.now().toString(); // Simple ID
+  const ticketPath = path.join(ticketsDir, `${ticketId}.json`);
+  const ticket = {
+    id: ticketId,
+    product,
+    discordEmail,
+    messages: [{ timestamp: new Date().toISOString(), author: 'System', text: `Ticket created for ${product}. Discord/Email: ${discordEmail}` }],
+    visibleTo: ['admin', discordEmail] // Admins and user
+  };
+  fs.writeFile(ticketPath, JSON.stringify(ticket, null, 2), (err) => {
+    if (err) {
+      console.error('Error creating ticket:', err);
+      return res.status(500).json({ success: false, message: 'Error creating ticket' });
+    }
+    console.log('Ticket created:', ticketId);
+    res.json({ success: true, ticketId });
+  });
+});
+
+app.get('/tickets/:id', (req, res) => {
+  const ticketPath = path.join(ticketsDir, `${req.params.id}.json`);
+  if (!fs.existsSync(ticketPath)) {
+    return res.status(404).json({ success: false, message: 'Ticket not found' });
+  }
+  fs.readFile(ticketPath, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Error reading ticket:', err);
+      return res.status(500).json({ success: false, message: 'Error reading ticket' });
+    }
+    res.json({ success: true, ticket: JSON.parse(data) });
+  });
+});
+
+app.post('/tickets/:id/message', (req, res) => {
+  const { text, author } = req.body;
+  if (!text || !author) {
+    return res.status(400).json({ success: false, message: 'Text and author required' });
+  }
+  const ticketPath = path.join(ticketsDir, `${req.params.id}.json`);
+  if (!fs.existsSync(ticketPath)) {
+    return res.status(404).json({ success: false, message: 'Ticket not found' });
+  }
+  fs.readFile(ticketPath, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Error reading ticket for message:', err);
+      return res.status(500).json({ success: false, message: 'Error adding message' });
+    }
+    const ticket = JSON.parse(data);
+    ticket.messages.push({ timestamp: new Date().toISOString(), author, text });
+    fs.writeFile(ticketPath, JSON.stringify(ticket, null, 2), (err) => {
+      if (err) {
+        console.error('Error saving message:', err);
+        return res.status(500).json({ success: false, message: 'Error saving message' });
+      }
+      io.to(req.params.id).emit('newMessage', { timestamp: new Date().toISOString(), author, text }); // Broadcast to room
+      console.log('Message added to ticket:', req.params.id);
+      res.json({ success: true });
+    });
+  });
+});
+
+// Socket.io for live chat updates
+io.on('connection', (socket) => {
+  socket.on('joinTicket', (ticketId) => {
+    socket.join(ticketId);
+    console.log('User joined ticket:', ticketId);
+  });
+  socket.on('disconnect', () => {
+    console.log('User disconnected');
+  });
+});
+
+// Serve ticketing.html
+app.get('/ticketing.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'ticketing.html'));
+});
+
 // Serve index.html for all other GET requests
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
@@ -124,6 +204,6 @@ app.get('*', (req, res) => {
 
 // Start the server
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
