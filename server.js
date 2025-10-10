@@ -181,8 +181,8 @@ io.on('connection', (socket) => {
   });
 });
 
-// Serve dashboard.html for all GET requests
-app.get('*', (req, res) => {
+// Serve dashboard.html for all unmatched GET requests (updated for Express 5 compatibility)
+app.get('/{*catchAll}', (req, res) => {
   res.sendFile(path.join(__dirname, 'dashboard.html'));
 });
 
