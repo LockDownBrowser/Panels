@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Manager</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .file-list { list-style: none; padding: 0; }
+    .file-list li { padding: 10px; border-bottom: 1px solid #ddd; }
+    input[type="file"] { margin: 10px 0; }
+    button { padding: 8px 16px; margin-right: 10px; }
+  </style>
+</head>
+<body>
+  <h2>File Manager</h2>
+  <input type="file" id="fileInput" multiple>
+  <button onclick="uploadFiles()">Upload</button>
+  <button onclick="logout()">Logout</button>
+  <ul id="fileList" class="file-list"></ul>
+  <script>
+    function loadFiles() {
+      // Simulate loading files (replace with actual file system access if needed)
+      const files = ['file1.txt', 'file2.jpg', 'document.pdf'];
+      const list = document.getElementById('fileList');
+      list.innerHTML = '';
+      files.forEach(file => {
+        const li = document.createElement('li');
+        li.innerText = file;
+        const deleteBtn = document.createElement('button');
+        deleteBtn.innerText = 'Delete';
+        deleteBtn.onclick = () => deleteFile(file);
+        li.appendChild(deleteBtn);
+        list.appendChild(li);
+      });
+    }
+
+    function uploadFiles() {
+      const files = document.getElementById('fileInput').files;
+      if (files.length > 0) {
+        for (let file of files) {
+          console.log('Uploading:', file.name);
+          // Add file to the list (simulated)
+          const list = document.getElementById('fileList');
+          const li = document.createElement('li');
+          li.innerText = file.name;
+          const deleteBtn = document.createElement('button');
+          deleteBtn.innerText = 'Delete';
+          deleteBtn.onclick = () => deleteFile(file.name);
+          li.appendChild(deleteBtn);
+          list.appendChild(li);
+        }
+        alert('Files uploaded (simulated)');
+      }
+    }
+
+    function deleteFile(fileName) {
+      if (confirm(`Delete ${fileName}?`)) {
+        const list = document.getElementById('fileList');
+        list.innerHTML = list.innerHTML.replace(new RegExp(`<li>${fileName}.*?</li>`), '');
+        alert(`${fileName} deleted (simulated)`);
+      }
+    }
+
+    function logout() {
+      window.location.href = 'index.html';
+    }
+
+    // Load files on page load
+    window.onload = loadFiles;
+  </script>
+</body>
+</html>
