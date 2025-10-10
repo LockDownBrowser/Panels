@@ -19,9 +19,9 @@
   <button onclick="logout()">Logout</button>
   <ul id="fileList" class="file-list"></ul>
   <script>
+    let files = ['file1.txt', 'file2.jpg', 'document.pdf']; // Simulated file list
+
     function loadFiles() {
-      // Simulate loading files (replace with actual file system access if needed)
-      const files = ['file1.txt', 'file2.jpg', 'document.pdf'];
       const list = document.getElementById('fileList');
       list.innerHTML = '';
       files.forEach(file => {
@@ -36,34 +36,26 @@
     }
 
     function uploadFiles() {
-      const files = document.getElementById('fileInput').files;
-      if (files.length > 0) {
-        for (let file of files) {
-          console.log('Uploading:', file.name);
-          // Add file to the list (simulated)
-          const list = document.getElementById('fileList');
-          const li = document.createElement('li');
-          li.innerText = file.name;
-          const deleteBtn = document.createElement('button');
-          deleteBtn.innerText = 'Delete';
-          deleteBtn.onclick = () => deleteFile(file.name);
-          li.appendChild(deleteBtn);
-          list.appendChild(li);
-        }
+      const input = document.getElementById('fileInput');
+      const newFiles = Array.from(input.files);
+      if (newFiles.length > 0) {
+        files = [...files, ...newFiles.map(f => f.name)]; // Add new file names
+        loadFiles();
+        input.value = ''; // Clear input
         alert('Files uploaded (simulated)');
       }
     }
 
     function deleteFile(fileName) {
       if (confirm(`Delete ${fileName}?`)) {
-        const list = document.getElementById('fileList');
-        list.innerHTML = list.innerHTML.replace(new RegExp(`<li>${fileName}.*?</li>`), '');
+        files = files.filter(f => f !== fileName);
+        loadFiles();
         alert(`${fileName} deleted (simulated)`);
       }
     }
 
     function logout() {
-      window.location.href = 'index.html';
+      window.location.href = '/index.html';
     }
 
     // Load files on page load
