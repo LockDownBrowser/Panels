@@ -10,6 +10,7 @@ const io = socketIo(server);
 // Dynamically create directories if they don't exist
 const filesDir = path.join(__dirname, 'files');
 const ticketsDir = path.join(__dirname, 'tickets');
+const archivedTicketsDir = path.join(ticketsDir, 'archived');
 if (!fs.existsSync(filesDir)) {
   fs.mkdirSync(filesDir, { recursive: true });
   console.log('Created files directory:', filesDir);
@@ -17,6 +18,10 @@ if (!fs.existsSync(filesDir)) {
 if (!fs.existsSync(ticketsDir)) {
   fs.mkdirSync(ticketsDir, { recursive: true });
   console.log('Created tickets directory:', ticketsDir);
+}
+if (!fs.existsSync(archivedTicketsDir)) {
+  fs.mkdirSync(archivedTicketsDir, { recursive: true });
+  console.log('Created archived tickets directory:', archivedTicketsDir);
 }
 
 // Serve static files from the root directory
@@ -117,13 +122,16 @@ app.post('/tickets/create', (req, res) => {
   const { product, discordEmail } = req.body;
   if (!product || !discordEmail) return res.status(400).json({ success: false, message: 'Product and Discord/Email required' });
   const ticketId = Date.now().toString();
-  const ticketPath = path.join(ticketsDir, `${ticketId}.json`);
+  const ticketDir = path.join(ticketsDir, ticketId);
+  const ticketPath = path.join(ticketDir, 'ticket.json');
+  fs.mkdirSync(ticketDir, { recursive: true });
   const ticket = {
     id: ticketId,
     product,
     discordEmail,
     messages: [{ timestamp: new Date().toISOString(), author: 'System', text: `Ticket created for ${product}. Discord/Email: ${discordEmail}` }],
-    visibleTo: ['admin', discordEmail]
+    visibleTo: ['admin', discordEmail],
+    status: 'open'
   };
   fs.writeFile(ticketPath, JSON.stringify(ticket, null, 2), (err) => {
     if (err) {
@@ -135,8 +143,27 @@ app.post('/tickets/create', (req, res) => {
   });
 });
 
+app.get('/tickets/list', (req, res) => {
+  fs.readdir(ticketsDir, (err, dirs) => {
+    if (err) {
+      console.error('Error listing tickets:', err);
+      return res.status(500).json({ success: false, message: 'Error listing tickets' });
+    }
+    const tickets = [];
+    for (const dir of dirs) {
+      const ticketPath = path.join(ticketsDir, dir, 'ticket.json');
+      if (fs.existsSync(ticketPath)) {
+        const ticket = JSON.parse(fs.readFileSync(ticketPath, 'utf8'));
+        tickets.push(ticket);
+      }
+    }
+    res.json({ success: true, tickets });
+  });
+});
+
 app.get('/tickets/:id', (req, res) => {
-  const ticketPath = path.join(ticketsDir, `${req.params.id}.json`);
+  const ticketDir = path.join(ticketsDir, req.params.id);
+  const ticketPath = path.join(ticketDir, 'ticket.json');
   if (!fs.existsSync(ticketPath)) return res.status(404).json({ success: false, message: 'Ticket not found' });
   fs.readFile(ticketPath, 'utf8', (err, data) => {
     if (err) {
@@ -150,7 +177,8 @@ app.get('/tickets/:id', (req, res) => {
 app.post('/tickets/:id/message', (req, res) => {
   const { text, author } = req.body;
   if (!text || !author) return res.status(400).json({ success: false, message: 'Text and author required' });
-  const ticketPath = path.join(ticketsDir, `${req.params.id}.json`);
+  const ticketDir = path.join(ticketsDir, req.params.id);
+  const ticketPath = path.join(ticketDir, 'ticket.json');
   if (!fs.existsSync(ticketPath)) return res.status(404).json({ success: false, message: 'Ticket not found' });
   fs.readFile(ticketPath, 'utf8', (err, data) => {
     if (err) {
@@ -170,6 +198,30 @@ app.post('/tickets/:id/message', (req, res) => {
   });
 });
 
+app.post('/tickets/:id/close', (req, res) => {
+  const ticketDir = path.join(ticketsDir, req.params.id);
+  const ticketPath = path.join(ticketDir, 'ticket.json');
+  if (!fs.existsSync(ticketPath)) return res.status(404).json({ success: false, message: 'Ticket not found' });
+  fs.readFile(ticketPath, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Error reading ticket for close:', err);
+      return res.status(500).json({ success: false, message: 'Error closing ticket' });
+    }
+    const ticket = JSON.parse(data);
+    ticket.status = 'closed';
+    fs.writeFile(ticketPath, JSON.stringify(ticket, null, 2), (err) => {
+      if (err) {
+        console.error('Error saving closed ticket:', err);
+        return res.status(500).json({ success: false, message: 'Error saving closed ticket' });
+      }
+      const archivedDir = path.join(archivedTicketsDir, req.params.id);
+      fs.mkdirSync(archivedDir, { recursive: true });
+      fs.renameSync(ticketDir, archivedDir);
+      res.json({ success: true });
+    });
+  });
+});
+
 // Socket.io for live chat updates
 io.on('connection', (socket) => {
   socket.on('joinTicket', (ticketId) => {
@@ -181,8 +233,8 @@ io.on('connection', (socket) => {
   });
 });
 
-// Serve dashboard.html for all unmatched GET requests (updated for Express 5 compatibility)
-app.get('/{*catchAll}', (req, res) => {
+// Serve dashboard.html for all unmatched GET requests
+app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dashboard.html'));
 });
 
