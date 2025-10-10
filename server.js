@@ -7,11 +7,17 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-// Ensure directories exist
+// Dynamically create directories if they don't exist
 const filesDir = path.join(__dirname, 'files');
 const ticketsDir = path.join(__dirname, 'tickets');
-if (!fs.existsSync(filesDir)) fs.mkdirSync(filesDir, { recursive: true });
-if (!fs.existsSync(ticketsDir)) fs.mkdirSync(ticketsDir, { recursive: true });
+if (!fs.existsSync(filesDir)) {
+  fs.mkdirSync(filesDir, { recursive: true });
+  console.log('Created files directory:', filesDir);
+}
+if (!fs.existsSync(ticketsDir)) {
+  fs.mkdirSync(ticketsDir, { recursive: true });
+  console.log('Created tickets directory:', ticketsDir);
+}
 
 // Serve static files from the root directory
 app.use(express.static('.'));
@@ -27,8 +33,10 @@ let credentials;
 try {
   const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
   credentials = config.credentials;
+  console.log('Loaded credentials:', Object.keys(credentials));
 } catch (err) {
   credentials = { admin: process.env.ADMIN_PASSWORD || 'password123' };
+  console.log('Using default credentials:', credentials);
 }
 
 // Error handling middleware
@@ -37,7 +45,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: 'Internal server error' });
 });
 
-// Handle login POST request (add isAdmin flag for future admin checks)
+// Handle login POST request (include user info for welcome)
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
   console.log('Login attempt:', { username, password });
@@ -48,7 +56,7 @@ app.post('/login', (req, res) => {
   }
 });
 
-// File Manager APIs (unchanged from previous)
+// File Manager APIs
 app.get('/files/list', (req, res) => {
   fs.readdir(filesDir, (err, files) => {
     if (err) {
@@ -62,13 +70,9 @@ app.get('/files/list', (req, res) => {
 
 app.get('/files/read', (req, res) => {
   const { filename } = req.query;
-  if (!filename) {
-    return res.status(400).json({ success: false, message: 'Filename required' });
-  }
+  if (!filename) return res.status(400).json({ success: false, message: 'Filename required' });
   const filePath = path.join(filesDir, filename);
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ success: false, message: 'File not found' });
-  }
+  if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, message: 'File not found' });
   fs.readFile(filePath, 'utf8', (err, content) => {
     if (err) {
       console.error('Error reading file:', err);
@@ -81,9 +85,7 @@ app.get('/files/read', (req, res) => {
 
 app.post('/files/write', (req, res) => {
   const { filename, content } = req.body;
-  if (!filename || content === undefined) {
-    return res.status(400).json({ success: false, message: 'Filename and content required' });
-  }
+  if (!filename || content === undefined) return res.status(400).json({ success: false, message: 'Filename and content required' });
   const filePath = path.join(filesDir, filename);
   fs.writeFile(filePath, content, 'utf8', (err) => {
     if (err) {
@@ -97,13 +99,9 @@ app.post('/files/write', (req, res) => {
 
 app.post('/files/delete', (req, res) => {
   const { filename } = req.body;
-  if (!filename) {
-    return res.status(400).json({ success: false, message: 'Filename required' });
-  }
+  if (!filename) return res.status(400).json({ success: false, message: 'Filename required' });
   const filePath = path.join(filesDir, filename);
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ success: false, message: 'File not found' });
-  }
+  if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, message: 'File not found' });
   fs.unlink(filePath, (err) => {
     if (err) {
       console.error('Error deleting file:', err);
@@ -117,17 +115,15 @@ app.post('/files/delete', (req, res) => {
 // Ticketing System APIs
 app.post('/tickets/create', (req, res) => {
   const { product, discordEmail } = req.body;
-  if (!product || !discordEmail) {
-    return res.status(400).json({ success: false, message: 'Product and Discord/Email required' });
-  }
-  const ticketId = Date.now().toString(); // Simple ID
+  if (!product || !discordEmail) return res.status(400).json({ success: false, message: 'Product and Discord/Email required' });
+  const ticketId = Date.now().toString();
   const ticketPath = path.join(ticketsDir, `${ticketId}.json`);
   const ticket = {
     id: ticketId,
     product,
     discordEmail,
     messages: [{ timestamp: new Date().toISOString(), author: 'System', text: `Ticket created for ${product}. Discord/Email: ${discordEmail}` }],
-    visibleTo: ['admin', discordEmail] // Admins and user
+    visibleTo: ['admin', discordEmail]
   };
   fs.writeFile(ticketPath, JSON.stringify(ticket, null, 2), (err) => {
     if (err) {
@@ -141,9 +137,7 @@ app.post('/tickets/create', (req, res) => {
 
 app.get('/tickets/:id', (req, res) => {
   const ticketPath = path.join(ticketsDir, `${req.params.id}.json`);
-  if (!fs.existsSync(ticketPath)) {
-    return res.status(404).json({ success: false, message: 'Ticket not found' });
-  }
+  if (!fs.existsSync(ticketPath)) return res.status(404).json({ success: false, message: 'Ticket not found' });
   fs.readFile(ticketPath, 'utf8', (err, data) => {
     if (err) {
       console.error('Error reading ticket:', err);
@@ -155,13 +149,9 @@ app.get('/tickets/:id', (req, res) => {
 
 app.post('/tickets/:id/message', (req, res) => {
   const { text, author } = req.body;
-  if (!text || !author) {
-    return res.status(400).json({ success: false, message: 'Text and author required' });
-  }
+  if (!text || !author) return res.status(400).json({ success: false, message: 'Text and author required' });
   const ticketPath = path.join(ticketsDir, `${req.params.id}.json`);
-  if (!fs.existsSync(ticketPath)) {
-    return res.status(404).json({ success: false, message: 'Ticket not found' });
-  }
+  if (!fs.existsSync(ticketPath)) return res.status(404).json({ success: false, message: 'Ticket not found' });
   fs.readFile(ticketPath, 'utf8', (err, data) => {
     if (err) {
       console.error('Error reading ticket for message:', err);
@@ -174,8 +164,7 @@ app.post('/tickets/:id/message', (req, res) => {
         console.error('Error saving message:', err);
         return res.status(500).json({ success: false, message: 'Error saving message' });
       }
-      io.to(req.params.id).emit('newMessage', { timestamp: new Date().toISOString(), author, text }); // Broadcast to room
-      console.log('Message added to ticket:', req.params.id);
+      io.to(req.params.id).emit('newMessage', { timestamp: new Date().toISOString(), author, text });
       res.json({ success: true });
     });
   });
@@ -192,14 +181,9 @@ io.on('connection', (socket) => {
   });
 });
 
-// Serve ticketing.html
-app.get('/ticketing.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'ticketing.html'));
-});
-
-// Serve index.html for all other GET requests
+// Serve dashboard.html for all GET requests
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, 'dashboard.html'));
 });
 
 // Start the server
