@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BlueLook Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="/socket.io/socket.io.js"></script>
   <style>
     body {
       margin: 0;
@@ -166,6 +167,80 @@
       color: #0d47a1;
     }
 
+    /* Modal Styles */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 18px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+      text-align: center;
+    }
+
+    .modal-content h3 {
+      color: #0d47a1;
+      margin-bottom: 20px;
+    }
+
+    .modal-content input, .modal-content textarea {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      font-size: 1em;
+    }
+
+    .modal-content .buttons {
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+    }
+
+    .save-btn, .close-btn {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1em;
+      cursor: pointer;
+      transition: transform 0.3s ease, background 0.3s ease;
+    }
+
+    .save-btn {
+      background: linear-gradient(to right, #2196f3, #1976d2);
+      color: #fff;
+    }
+
+    .save-btn:hover {
+      transform: scale(1.1);
+      background: linear-gradient(to right, #1976d2, #0d47a1);
+    }
+
+    .close-btn {
+      background: #bdc3c7;
+      color: #333;
+    }
+
+    .close-btn:hover {
+      transform: scale(1.1);
+      background: #95a5a6;
+    }
+
     /* Mobile Responsiveness */
     @media (max-width: 768px) {
       .dashboard-sections {
@@ -175,6 +250,10 @@
       .section-box {
         max-width: 100%;
       }
+
+      .modal-content {
+        width: 95%;
+      }
     }
   </style>
 </head>
@@ -182,7 +261,7 @@
   <div class="container">
     <h1>BlueLook Dashboard</h1>
 
-    <div class="dashboard-sections">
+    <div class="dashboard-sections" id="dashboardSections">
       <div class="section-box" onclick="showSection('fileManagement')">
         <h2>File Managing</h2>
         <p>Manage your files, upload, edit, and delete.</p>
@@ -196,15 +275,15 @@
     <!-- File Management Section -->
     <div id="fileManagement" class="section-content">
       <button class="back-button" onclick="backToDashboard()">Back to Dashboard</button>
-      <h1>File Management</h1>
+      <h2>File Management</h2>
       <ul class="file-list" id="fileList"></ul>
       <button class="cta-button" onclick="showCreateModal()">Create New File</button>
     </div>
 
-    <!-- Profit Recording Section */
+    <!-- Profit Recording Section -->
     <div id="profitRecording" class="section-content">
       <button class="back-button" onclick="backToDashboard()">Back to Dashboard</button>
-      <h1>Profit Recording</h1>
+      <h2>Profit Recording</h2>
       <div class="profits-form">
         <label for="clientDiscord">Client Discord:</label>
         <input type="text" id="clientDiscord" placeholder="e.g., user#1234">
@@ -218,10 +297,10 @@
           <option value="ACT Standard">ACT Standard</option>
         </select>
         <label for="amount">Amount (USD):</label>
-        <input type="number" id="amount" placeholder="e.g., 390">
+        <input type="number" id="amount" placeholder="e.g., 390" min="0" step="0.01">
         <button class="cta-button" onclick="logSale()">Log Sale</button>
       </div>
-      <div class="total-profits">Total Profits: $<span id="totalProfits">0</span></div>
+      <div class="total-profits">Total Profits: $<span id="totalProfits">0.00</span></div>
       <table class="sales-table" id="salesTable">
         <thead>
           <tr>
@@ -263,14 +342,16 @@
 
   <script>
     let currentFilename = '';
+    let isAdmin = false; // Mock admin status, replace with login response
 
     function showSection(sectionId) {
-      document.querySelectorAll('.dashboard-sections, .section-content').forEach(el => el.style.display = 'none');
+      document.getElementById('dashboardSections').style.display = 'none';
+      document.querySelectorAll('.section-content').forEach(el => el.style.display = 'none');
       document.getElementById(sectionId).style.display = 'block';
     }
 
     function backToDashboard() {
-      document.querySelectorAll('.dashboard-sections').forEach(el => el.style.display = 'flex');
+      document.getElementById('dashboardSections').style.display = 'flex';
       document.querySelectorAll('.section-content').forEach(el => el.style.display = 'none');
     }
 
@@ -296,19 +377,16 @@
                 const actions = document.createElement('div');
                 actions.className = 'file-actions';
                 const openBtn = document.createElement('button');
-                openBtn.className = 'open-btn';
                 openBtn.textContent = 'Open/Edit';
                 openBtn.onclick = () => openFile(file);
                 actions.appendChild(openBtn);
 
                 const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'delete-btn';
                 deleteBtn.textContent = 'Delete';
                 deleteBtn.onclick = () => deleteFile(file);
                 actions.appendChild(deleteBtn);
 
                 const viewLink = document.createElement('a');
-                viewLink.className = 'view-link';
                 viewLink.href = `/files/${encodeURIComponent(file)}`;
                 viewLink.target = '_blank';
                 viewLink.textContent = 'View';
@@ -322,10 +400,7 @@
             alert('Error loading files: ' + data.message);
           }
         })
-        .catch(error => {
-          console.error('Fetch error:', error);
-          alert('Failed to load files. Check console for details.');
-        });
+        .catch(error => console.error('Fetch error:', error));
     }
 
     // Create a new file
@@ -355,10 +430,7 @@
           alert('Error: ' + data.message);
         }
       })
-      .catch(error => {
-        console.error('Error creating file:', error);
-        alert('Failed to create file. Check console.');
-      });
+      .catch(error => console.error('Error creating file:', error));
     }
 
     // Open file for editing
@@ -375,10 +447,7 @@
             alert('Error: ' + data.message);
           }
         })
-        .catch(error => {
-          console.error('Error opening file:', error);
-          alert('Failed to open file. Check console.');
-        });
+        .catch(error => console.error('Error opening file:', error));
     }
 
     // Save edited file
@@ -403,10 +472,7 @@
           alert('Error: ' + data.message);
         }
       })
-      .catch(error => {
-        console.error('Error saving file:', error);
-        alert('Failed to save file. Check console.');
-      });
+      .catch(error => console.error('Error saving file:', error));
     }
 
     // Delete file
@@ -426,10 +492,7 @@
             alert('Error: ' + data.message);
           }
         })
-        .catch(error => {
-          console.error('Error deleting file:', error);
-          alert('Failed to delete file. Check console.');
-        });
+        .catch(error => console.error('Error deleting file:', error));
       }
     }
 
@@ -439,216 +502,8 @@
       modals.forEach(modal => modal.style.display = 'none');
     }
 
-    // Logout
-    function logout() {
-      window.location.href = '/index.html'; // Adjust to your login page
-    }
-
     // Load files on page load
     window.onload = loadFiles;
   </script>
 </body>
 </html>
-``````javascript
-const express = require('express');
-const http = require('http');
-const path = require('path');
-const fs = require('fs');
-const socketIo = require('socket.io');
-const app = express();
-const server = http.createServer(app);
-const io = socketIo(server);
-
-// Dynamically create directories if they don't exist
-const filesDir = path.join(__dirname, 'files');
-const ticketsDir = path.join(__dirname, 'tickets');
-const archivedTicketsDir = path.join(ticketsDir, 'archived');
-if (!fs.existsSync(filesDir)) {
-  fs.mkdirSync(filesDir, { recursive: true });
-  console.log('Created files directory:', filesDir);
-}
-if (!fs.existsSync(ticketsDir)) {
-  fs.mkdirSync(ticketsDir, { recursive: true });
-  console.log('Created tickets directory:', ticketsDir);
-}
-if (!fs.existsSync(archivedTicketsDir)) {
-  fs.mkdirSync(archivedTicketsDir, { recursive: true });
-  console.log('Created archived tickets directory:', archivedTicketsDir);
-}
-
-// Serve static files from the root directory
-app.use(express.static('.'));
-
-// Serve files publicly from /files
-app.use('/files', express.static(filesDir));
-
-// Parse JSON bodies for POST requests
-app.use(express.json());
-
-// Read credentials from config.json (or env for production)
-let credentials;
-try {
-  const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
-  credentials = config.credentials;
-  console.log('Loaded credentials:', Object.keys(credentials));
-} catch (err) {
-  credentials = { admin: process.env.ADMIN_PASSWORD || 'password123' };
-  console.log('Using default credentials:', credentials);
-}
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Server error:', err.stack);
-  res.status(500).json({ success: false, message: 'Internal server error' });
-});
-
-// Handle login POST request (include user info for welcome)
-app.post('/login', (req, res) => {
-  const { username, password } = req.body;
-  console.log('Login attempt:', { username, password });
-  if (credentials[username] && credentials[username] === password) {
-    res.json({ success: true, redirect: '/dashboard.html', user: { username, isAdmin: username === 'admin' } });
-  } else {
-    res.status(401).json({ success: false, message: 'Invalid credentials' });
-  }
-});
-
-// File Manager APIs
-app.get('/files/list', (req, res) => {
-  fs.readdir(filesDir, (err, files) => {
-    if (err) {
-      console.error('Error listing files:', err);
-      return res.status(500).json({ success: false, message: 'Error listing files: ' + err.message });
-    }
-    console.log('Files listed:', files);
-    res.json({ success: true, files: files || [] });
-  });
-});
-
-app.get('/files/read', (req, res) => {
-  const { filename } = req.query;
-  if (!filename) return res.status(400).json({ success: false, message: 'Filename required' });
-  const filePath = path.join(filesDir, filename);
-  if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, message: 'File not found' });
-  fs.readFile(filePath, 'utf8', (err, content) => {
-    if (err) {
-      console.error('Error reading file:', err);
-      return res.status(500).json({ success: false, message: 'Error reading file: ' + err.message });
-    }
-    console.log('File read:', filename);
-    res.json({ success: true, content: content || '' });
-  });
-});
-
-app.post('/files/write', (req, res) => {
-  const { filename, content } = req.body;
-  if (!filename || content === undefined) return res.status(400).json({ success: false, message: 'Filename and content required' });
-  const filePath = path.join(filesDir, filename);
-  fs.writeFile(filePath, content, 'utf8', (err) => {
-    if (err) {
-      console.error('Error writing file:', err);
-      return res.status(500).json({ success: false, message: 'Error writing file: ' + err.message });
-    }
-    console.log('File written:', filename);
-    res.json({ success: true });
-  });
-});
-
-app.post('/files/delete', (req, res) => {
-  const { filename } = req.body;
-  if (!filename) return res.status(400).json({ success: false, message: 'Filename required' });
-  const filePath = path.join(filesDir, filename);
-  if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, message: 'File not found' });
-  fs.unlink(filePath, (err) => {
-    if (err) {
-      console.error('Error deleting file:', err);
-      return res.status(500).json({ success: false, message: 'Error deleting file: ' + err.message });
-    }
-    console.log('File deleted:', filename);
-    res.json({ success: true });
-  });
-});
-
-// Ticketing System APIs
-app.post('/tickets/create', (req, res) => {
-  const { product, discordEmail } = req.body;
-  if (!product || !discordEmail) return res.status(400).json({ success: false, message: 'Product and Discord/Email required' });
-  const ticketId = Date.now().toString();
-  const ticketDir = path.join(ticketsDir, ticketId);
-  fs.mkdirSync(ticketDir, { recursive: true });
-  const ticketPath = path.join(ticketDir, 'ticket.json');
-  const ticket = {
-    id: ticketId,
-    product,
-    discordEmail,
-    messages: [{ timestamp: new Date().toISOString(), author: 'System', text: `Ticket created for ${product}. Discord/Email: ${discordEmail}` }],
-    visibleTo: ['admin', discordEmail]
-  };
-  fs.writeFile(ticketPath, JSON.stringify(ticket, null, 2), (err) => {
-    if (err) {
-      console.error('Error creating ticket:', err);
-      return res.status(500).json({ success: false, message: 'Error creating ticket' });
-    }
-    console.log('Ticket created:', ticketId);
-    res.json({ success: true, ticketId });
-  });
-});
-
-app.get('/tickets/:id', (req, res) => {
-  const ticketDir = path.join(ticketsDir, req.params.id);
-  const ticketPath = path.join(ticketDir, 'ticket.json');
-  if (!fs.existsSync(ticketPath)) return res.status(404).json({ success: false, message: 'Ticket not found' });
-  fs.readFile(ticketPath, 'utf8', (err, data) => {
-    if (err) {
-      console.error('Error reading ticket:', err);
-      return res.status(500).json({ success: false, message: 'Error reading ticket' });
-    }
-    res.json({ success: true, ticket: JSON.parse(data) });
-  });
-});
-
-app.post('/tickets/:id/message', (req, res) => {
-  const { text, author } = req.body;
-  if (!text || !author) return res.status(400).json({ success: false, message: 'Text and author required' });
-  const ticketDir = path.join(ticketsDir, req.params.id);
-  const ticketPath = path.join(ticketDir, 'ticket.json');
-  if (!fs.existsSync(ticketPath)) return res.status(404).json({ success: false, message: 'Ticket not found' });
-  fs.readFile(ticketPath, 'utf8', (err, data) => {
-    if (err) {
-      console.error('Error reading ticket for message:', err);
-      return res.status(500).json({ success: false, message: 'Error adding message' });
-    }
-    const ticket = JSON.parse(data);
-    ticket.messages.push({ timestamp: new Date().toISOString(), author, text });
-    fs.writeFile(ticketPath, JSON.stringify(ticket, null, 2), (err) => {
-      if (err) {
-        console.error('Error saving message:', err);
-        return res.status(500).json({ success: false, message: 'Error saving message' });
-      }
-      io.to(req.params.id).emit('newMessage', { timestamp: new Date().toISOString(), author, text });
-      res.json({ success: true });
-    });
-  });
-});
-
-// Socket.io for live chat updates
-io.on('connection', (socket) => {
-  socket.on('joinTicket', (ticketId) => {
-    socket.join(ticketId);
-    console.log('User joined ticket:', ticketId);
-  });
-  socket.on('disconnect', () => {
-    console.log('User disconnected');
-  });
-});
-
-// Serve dashboard.html for all unmatched GET requests
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dashboard.html'));
-});
-
-// Start the server
-const port = process.env.PORT || 3000;
-server.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
