@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>File Manager Dashboard</title>
+  <title>BlueLook File Manager</title>
   <style>
     * {
       box-sizing: border-box;
@@ -12,31 +12,57 @@
     }
     body {
       font-family: 'Roboto', sans-serif;
-      background: linear-gradient(135deg, #e6f0fa, #f0f4f8);
+      background: linear-gradient(135deg, #f4f7fa, #e9ecef);
       color: #333;
       height: 100vh;
       display: flex;
       overflow: hidden;
     }
 
+    /* Header with Logo */
+    .header {
+      width: 100%;
+      background: linear-gradient(90deg, #3498db, #2980b9);
+      color: white;
+      padding: 15px 30px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      position: fixed;
+      top: 0;
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .header .logo {
+      font-size: 2em;
+      font-weight: 700;
+      background: linear-gradient(45deg, #ffffff, #d6eaf8);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+    }
+
     /* Sidebar */
     .sidebar {
       width: 260px;
-      background: #2c3e50;
+      background: #34495e;
       color: white;
-      padding: 20px;
+      padding: 80px 20px 20px;
       box-shadow: 3px 0 10px rgba(0,0,0,0.1);
       position: fixed;
       height: 100%;
       transition: transform 0.3s ease;
       z-index: 100;
+      overflow-y: auto;
     }
 
     .sidebar h2 {
       font-size: 1.5em;
       margin-bottom: 25px;
       text-align: center;
-      border-bottom: 1px solid #34495e;
+      border-bottom: 1px solid #465c71;
       padding-bottom: 10px;
     }
 
@@ -45,7 +71,7 @@
     }
 
     .sidebar li {
-      margin: 15px 0;
+      margin: 20px 0;
     }
 
     .sidebar a {
@@ -59,7 +85,7 @@
     }
 
     .sidebar a:hover {
-      background: #34495e;
+      background: #465c71;
     }
 
     .sidebar a i {
@@ -69,19 +95,23 @@
     /* Hamburger Menu */
     .hamburger {
       display: none;
-      font-size: 24px;
+      font-size: 28px;
       cursor: pointer;
       position: absolute;
-      top: 15px;
-      left: 15px;
+      top: 20px;
+      left: 20px;
       color: #333;
-      z-index: 200;
+      z-index: 300;
+      background: #fff;
+      border-radius: 50%;
+      padding: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
 
     /* Content */
     .content {
       margin-left: 260px;
-      padding: 30px;
+      padding: 120px 30px 30px;
       width: calc(100% - 260px);
       overflow-y: auto;
       transition: margin-left 0.3s ease;
@@ -93,6 +123,8 @@
       margin-bottom: 20px;
       text-align: center;
       font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
 
     /* File Manager */
@@ -127,18 +159,23 @@
       outline: none;
     }
 
-    .create-file button {
-      padding: 12px;
+    .create-fab {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      padding: 15px;
       background: #3498db;
       color: white;
       border: none;
-      border-radius: 6px;
+      border-radius: 50%;
       cursor: pointer;
-      font-size: 1em;
-      transition: background 0.3s;
+      font-size: 1.5em;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      transition: transform 0.3s, background 0.3s;
     }
 
-    .create-file button:hover {
+    .create-fab:hover {
+      transform: scale(1.1);
       background: #2980b9;
     }
 
@@ -146,6 +183,7 @@
       list-style: none;
       display: grid;
       gap: 15px;
+      margin-top: 20px;
     }
 
     .file-item {
@@ -271,6 +309,7 @@
       .sidebar {
         transform: translateX(-260px);
         height: auto;
+        padding-top: 60px;
       }
 
       .sidebar.open {
@@ -297,6 +336,11 @@
         justify-content: center;
       }
 
+      .create-fab {
+        bottom: 15px;
+        right: 15px;
+      }
+
       .modal-content {
         width: 95%;
         padding: 15px;
@@ -306,13 +350,14 @@
 </head>
 <body>
   <div class="hamburger" onclick="toggleSidebar()">&#9776;</div>
+  <div class="header">
+    <div class="logo">BlueLook</div>
+  </div>
 
   <div class="sidebar" id="sidebar">
-    <h2>Dashboard</h2>
+    <h2>Menu</h2>
     <ul>
-      <li><a href="/dashboard.html"><i></i>File Manager</a></li>
-      <li><a href="#"><i></i>Settings</a></li>
-      <li><a href="#"><i></i>Help</a></li>
+      <li><a href="/dashboard.html">File Manager</a></li>
     </ul>
   </div>
 
@@ -321,16 +366,25 @@
     <button class="logout-btn" onclick="logout()">Logout</button>
 
     <div class="file-manager">
-      <div class="create-file">
-        <input type="text" id="newFilename" placeholder="Filename (e.g., note.txt)">
-        <textarea id="newContent" placeholder="Enter content here..."></textarea>
-        <button class="create-btn" onclick="createFile()">Add File</button>
-      </div>
-
       <ul class="file-list" id="fileList"></ul>
+      <button class="create-fab" onclick="showCreateModal()">+</button>
     </div>
   </div>
 
+  <!-- Create Modal -->
+  <div id="createModal" class="modal">
+    <div class="modal-content">
+      <h3>Create New File</h3>
+      <input type="text" id="newFilename" placeholder="Filename (e.g., note.txt)">
+      <textarea id="newContent" placeholder="Enter content here..."></textarea>
+      <div class="buttons">
+        <button class="save-btn" onclick="createFile()">Create</button>
+        <button class="close-btn" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
   <div id="editModal" class="modal">
     <div class="modal-content">
       <h3>Editing <span id="editFilename"></span></h3>
@@ -351,6 +405,13 @@
       sidebar.classList.toggle('open');
     }
 
+    // Show create modal
+    function showCreateModal() {
+      document.getElementById('createModal').style.display = 'flex';
+      document.getElementById('newFilename').value = '';
+      document.getElementById('newContent').value = '';
+    }
+
     // Load and display files
     function loadFiles() {
       fetch('/files/list')
@@ -361,9 +422,9 @@
         .then(data => {
           if (data.success) {
             const list = document.getElementById('fileList');
-            list.innerHTML = ''; // Clear existing list
+            list.innerHTML = '';
             if (data.files.length === 0) {
-              list.innerHTML = '<li>No files available.</li>';
+              list.innerHTML = '<li class="file-item">No files available.</li>';
             } else {
               data.files.forEach(file => {
                 const li = document.createElement('div');
@@ -431,8 +492,7 @@
       })
       .then(data => {
         if (data.success) {
-          document.getElementById('newFilename').value = '';
-          document.getElementById('newContent').value = '';
+          closeModal();
           loadFiles();
           alert('File created successfully!');
         } else {
@@ -456,7 +516,7 @@
           if (data.success) {
             currentFilename = filename;
             document.getElementById('editFilename').textContent = filename;
-            document.getElementById('editContent').value = data.content;
+            document.getElementById('editContent').value = data.content || '';
             document.getElementById('editModal').style.display = 'flex';
           } else {
             alert('Error: ' + data.message);
@@ -471,6 +531,10 @@
     // Save edited file
     function saveFile() {
       const content = document.getElementById('editContent').value;
+      if (!content) {
+        alert('Please enter some content to save.');
+        return;
+      }
       fetch('/files/write', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -524,7 +588,8 @@
 
     // Close modal
     function closeModal() {
-      document.getElementById('editModal').style.display = 'none';
+      const modals = document.querySelectorAll('.modal');
+      modals.forEach(modal => modal.style.display = 'none');
     }
 
     // Logout
