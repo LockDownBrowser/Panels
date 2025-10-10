@@ -436,4 +436,104 @@
           loadFiles();
           alert('File created successfully!');
         } else {
-          alert('Error:
+          alert('Error: ' + data.message);
+        }
+      })
+      .catch(error => {
+        console.error('Error creating file:', error);
+        alert('Failed to create file. Check console.');
+      });
+    }
+
+    // Open file for editing
+    function openFile(filename) {
+      fetch(`/files/read?filename=${encodeURIComponent(filename)}`)
+        .then(response => {
+          if (!response.ok) throw new Error('Failed to read file');
+          return response.json();
+        })
+        .then(data => {
+          if (data.success) {
+            currentFilename = filename;
+            document.getElementById('editFilename').textContent = filename;
+            document.getElementById('editContent').value = data.content;
+            document.getElementById('editModal').style.display = 'flex';
+          } else {
+            alert('Error: ' + data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error opening file:', error);
+          alert('Failed to open file. Check console.');
+        });
+    }
+
+    // Save edited file
+    function saveFile() {
+      const content = document.getElementById('editContent').value;
+      fetch('/files/write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: currentFilename, content })
+      })
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to save file');
+        return response.json();
+      })
+      .then(data => {
+        if (data.success) {
+          closeModal();
+          loadFiles();
+          alert('File saved successfully!');
+        } else {
+          alert('Error: ' + data.message);
+        }
+      })
+      .catch(error => {
+        console.error('Error saving file:', error);
+        alert('Failed to save file. Check console.');
+      });
+    }
+
+    // Delete file
+    function deleteFile(filename) {
+      if (confirm(`Are you sure you want to delete ${filename}?`)) {
+        fetch('/files/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename })
+        })
+        .then(response => {
+          if (!response.ok) throw new Error('Failed to delete file');
+          return response.json();
+        })
+        .then(data => {
+          if (data.success) {
+            loadFiles();
+            alert('File deleted successfully!');
+          } else {
+            alert('Error: ' + data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error deleting file:', error);
+          alert('Failed to delete file. Check console.');
+        });
+      }
+    }
+
+    // Close modal
+    function closeModal() {
+      document.getElementById('editModal').style.display = 'none';
+    }
+
+    // Logout
+    function logout() {
+      window.location.href = '/index.html';
+    }
+
+    // Load files on page load
+    window.onload = loadFiles;
+  </script>
+</body>
+</html>
