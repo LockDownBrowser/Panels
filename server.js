@@ -10,6 +10,7 @@ const io = socketIo(server);
 // Dynamically create directories if they don't exist
 const filesDir = path.join(__dirname, 'files');
 const ticketsDir = path.join(__dirname, 'tickets');
+const archivedTicketsDir = path.join(ticketsDir, 'archived');
 if (!fs.existsSync(filesDir)) {
   fs.mkdirSync(filesDir, { recursive: true });
   console.log('Created files directory:', filesDir);
@@ -17,6 +18,10 @@ if (!fs.existsSync(filesDir)) {
 if (!fs.existsSync(ticketsDir)) {
   fs.mkdirSync(ticketsDir, { recursive: true });
   console.log('Created tickets directory:', ticketsDir);
+}
+if (!fs.existsSync(archivedTicketsDir)) {
+  fs.mkdirSync(archivedTicketsDir, { recursive: true });
+  console.log('Created archived tickets directory:', archivedTicketsDir);
 }
 
 // Serve static files from the root directory
@@ -45,12 +50,12 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: 'Internal server error' });
 });
 
-// Handle login POST request (include user info for welcome)
+// Handle login POST request
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
   console.log('Login attempt:', { username, password });
   if (credentials[username] && credentials[username] === password) {
-    res.json({ success: true, redirect: '/dashboard.html', user: { username, isAdmin: username === 'admin' } });
+    res.json({ success: true, redirect: '/dashboard', user: { username, isAdmin: username === 'admin' } });
   } else {
     res.status(401).json({ success: false, message: 'Invalid credentials' });
   }
@@ -174,7 +179,7 @@ app.post('/tickets/:id/message', (req, res) => {
   });
 });
 
-// New Sales Recording APIs
+// Sales Recording APIs
 const salesFile = path.join(__dirname, 'sales.json');
 if (!fs.existsSync(salesFile)) {
   fs.writeFileSync(salesFile, JSON.stringify([]), 'utf8');
@@ -224,9 +229,25 @@ io.on('connection', (socket) => {
   });
 });
 
-// Serve dashboard.html for all unmatched GET requests
+// Serve dashboard.html with correct content type
+app.get('/dashboard', (req, res) => {
+  res.set('Content-Type', 'text/html');
+  res.sendFile(path.join(__dirname, 'dashboard.html'), (err) => {
+    if (err) {
+      console.error('Error serving dashboard.html:', err);
+      res.status(500).send('Error loading dashboard');
+    }
+  });
+});
+
+// Health check route for debugging
+app.get('/health', (req, res) => {
+  res.json({ status: 'healthy', time: new Date().toISOString() });
+});
+
+// Serve all other routes as dashboard.html
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dashboard.html'));
+  res.redirect('/dashboard');
 });
 
 // Start the server
