@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BlueLook Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-  <script src="https://www.canvasjs.com/assets/script/canvasjs.min.js"></script> <!-- For charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- For sales chart -->
   <style>
     body {
       margin: 0;
@@ -101,6 +101,8 @@
     .file-list {
       list-style: none;
       padding: 0;
+      display: grid;
+      gap: 15px;
     }
 
     .file-item {
@@ -108,7 +110,6 @@
       padding: 15px;
       border-radius: 12px;
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-      margin-bottom: 15px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -122,7 +123,7 @@
     .file-actions button {
       background: linear-gradient(to right, #2196f3, #1976d2);
       color: #fff;
-      padding: 8px 12px;
+      padding: 8px 16px;
       border: none;
       border-radius: 8px;
       cursor: pointer;
@@ -134,44 +135,78 @@
       background: linear-gradient(to right, #1976d2, #0d47a1);
     }
 
+    .file-actions a {
+      background: linear-gradient(to right, #27ae60, #219653);
+      color: #fff;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    .file-actions a:hover {
+      background: linear-gradient(to right, #219653, #1b5e20);
+    }
+
     /* Profit Recording Section Styles */
     .profits-form {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 15px;
       max-width: 600px;
-      margin: 0 auto 40px;
+      margin: 0 auto 30px;
     }
 
     .profits-form label {
-      grid-column: 1 / 2;
-      text-align: right;
-      align-self: center;
+      grid-column: 1 / 3;
+      text-align: left;
+      font-weight: 600;
+      color: #0d47a1;
     }
 
     .profits-form input, .profits-form select {
-      grid-column: 2 / 3;
       padding: 12px;
       border: 1px solid #ddd;
       border-radius: 10px;
       font-size: 1em;
+      grid-column: 1 / 3;
     }
 
     .profits-form button {
       grid-column: 1 / 3;
-      margin-top: 10px;
+      background: linear-gradient(to right, #2196f3, #1976d2);
+      color: #fff;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    .profits-form button:hover {
+      background: linear-gradient(to right, #1976d2, #0d47a1);
     }
 
     .total-profits {
       font-size: 2em;
       color: #27ae60;
       margin-bottom: 20px;
+      background: #f9fbfd;
+      padding: 15px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     }
 
     .sales-table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 30px;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     }
 
     .sales-table th, .sales-table td {
@@ -185,19 +220,142 @@
       color: #0d47a1;
     }
 
-    .chart-container {
-      margin-top: 40px;
-      height: 400px;
+    .sales-table td {
+      background: #f9fbfd;
+    }
+
+    .finance-tools {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-top: 30px;
+    }
+
+    .finance-tools button {
+      background: linear-gradient(to right, #27ae60, #219653);
+      color: #fff;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    .finance-tools button:hover {
+      background: linear-gradient(to right, #219653, #1b5e20);
+    }
+
+    #salesChart {
+      max-width: 800px;
+      margin: 40px auto;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Modal Styles */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 18px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+      text-align: center;
+    }
+
+    .modal-content h3 {
+      color: #0d47a1;
+      margin-bottom: 20px;
+      font-size: 1.5em;
+      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .modal-content input, .modal-content textarea {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      font-size: 1em;
+    }
+
+    .modal-content .buttons {
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+    }
+
+    .save-btn, .close-btn {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1em;
+      cursor: pointer;
+      transition: transform 0.3s ease, background 0.3s ease;
+    }
+
+    .save-btn {
+      background: linear-gradient(to right, #2196f3, #1976d2);
+      color: #fff;
+    }
+
+    .save-btn:hover {
+      transform: scale(1.1);
+      background: linear-gradient(to right, #1976d2, #0d47a1);
+    }
+
+    .close-btn {
+      background: #bdc3c7;
+      color: #333;
+    }
+
+    .close-btn:hover {
+      transform: scale(1.1);
+      background: #95a5a6;
     }
 
     /* Mobile Responsiveness */
     @media (max-width: 768px) {
+      .dashboard-sections {
+        flex-direction: column;
+      }
+
+      .section-box {
+        max-width: 100%;
+      }
+
       .profits-form {
         grid-template-columns: 1fr;
       }
 
-      .profits-form label {
-        text-align: left;
+      .sales-table th, .sales-table td {
+        padding: 8px;
+        font-size: 0.9em;
+      }
+
+      .finance-tools {
+        flex-direction: column;
+      }
+
+      #salesChart {
+        max-width: 100%;
+        padding: 10px;
       }
     }
   </style>
@@ -206,7 +364,7 @@
   <div class="container">
     <h1>BlueLook Dashboard</h1>
 
-    <div class="dashboard-sections">
+    <div class="dashboard-sections" id="dashboardSections">
       <div class="section-box" onclick="showSection('fileManagement')">
         <h2>File Managing</h2>
         <p>Manage your files, upload, edit, and delete.</p>
@@ -225,11 +383,11 @@
       <button class="cta-button" onclick="showCreateModal()">Create New File</button>
     </div>
 
-    <!-- Profit Recording Section -->
+    <!-- Profit Recording Section */
     <div id="profitRecording" class="section-content">
       <button class="back-button" onclick="backToDashboard()">Back to Dashboard</button>
       <h2>Profit Recording</h2>
-      <form class="profits-form">
+      <div class="profits-form">
         <label for="clientDiscord">Client Discord:</label>
         <input type="text" id="clientDiscord" placeholder="e.g., user#1234">
         <label for="bypassType">Bypass Type:</label>
@@ -242,11 +400,11 @@
           <option value="ACT Standard">ACT Standard</option>
         </select>
         <label for="amount">Amount (USD):</label>
-        <input type="number" id="amount" placeholder="e.g., 390" step="0.01">
+        <input type="number" id="amount" placeholder="e.g., 390" min="0" step="0.01">
         <label for="saleDate">Sale Date:</label>
-        <input type="date" id="saleDate" value="">
-        <button type="button" class="cta-button" onclick="logSale()">Log Sale</button>
-      </form>
+        <input type="date" id="saleDate">
+        <button class="cta-button" onclick="logSale()">Log Sale</button>
+      </div>
       <div class="total-profits">Total Profits: $<span id="totalProfits">0.00</span></div>
       <table class="sales-table" id="salesTable">
         <thead>
@@ -260,8 +418,11 @@
         </thead>
         <tbody></tbody>
       </table>
-      <div id="chartContainer" class="chart-container"></div>
-      <button class="cta-button" onclick="exportToCSV()">Export to CSV</button>
+      <div class="finance-tools">
+        <button class="cta-button" onclick="exportToCSV()">Export to CSV</button>
+        <button class="cta-button" onclick="filterSales()">Filter by Date</button>
+      </div>
+      <canvas id="salesChart"></canvas>
     </div>
   </div>
 
@@ -292,6 +453,7 @@
 
   <script>
     let currentFilename = '';
+    let salesData = []; // To store sales for chart and export
 
     function showSection(sectionId) {
       document.getElementById('dashboardSections').style.display = 'none';
@@ -306,17 +468,7 @@
       document.querySelectorAll('.section-content').forEach(el => el.style.display = 'none');
     }
 
-    // Close modal
-    function closeModal() {
-      document.querySelectorAll('.modal').forEach(modal => modal.style.display = 'none');
-    }
-
-    // Show create file modal
-    function showCreateModal() {
-      document.getElementById('createModal').style.display = 'flex';
-    }
-
-    // Load files
+    // Load and display files
     function loadFiles() {
       fetch('/files/list')
         .then(response => response.json())
@@ -324,28 +476,58 @@
           if (data.success) {
             const list = document.getElementById('fileList');
             list.innerHTML = '';
-            data.files.forEach(file => {
-              const li = document.createElement('li');
-              li.className = 'file-item';
-              li.innerHTML = `
-                <span class="file-name">${file}</span>
-                <div class="file-actions">
-                  <button onclick="openFile('${file}')">Open/Edit</button>
-                  <button onclick="deleteFile('${file}')">Delete</button>
-                  <a href="/files/${encodeURIComponent(file)}" target="_blank">View</a>
-                </div>
-              `;
-              list.appendChild(li);
-            });
+            if (data.files.length === 0) {
+              list.innerHTML = '<li class="file-item">No files available.</li>';
+            } else {
+              data.files.forEach(file => {
+                const li = document.createElement('li');
+                li.className = 'file-item';
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'file-name';
+                nameSpan.textContent = file;
+                li.appendChild(nameSpan);
+
+                const actions = document.createElement('div');
+                actions.className = 'file-actions';
+                const openBtn = document.createElement('button');
+                openBtn.textContent = 'Open/Edit';
+                openBtn.onclick = () => openFile(file);
+                actions.appendChild(openBtn);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.onclick = () => deleteFile(file);
+                actions.appendChild(deleteBtn);
+
+                const viewLink = document.createElement('a');
+                viewLink.href = `/files/${encodeURIComponent(file)}`;
+                viewLink.target = '_blank';
+                viewLink.textContent = 'View';
+                actions.appendChild(viewLink);
+
+                li.appendChild(actions);
+                list.appendChild(li);
+              });
+            }
+          } else {
+            alert('Error loading files: ' + data.message);
           }
-        });
+        })
+        .catch(error => console.error('Fetch error:', error));
     }
 
-    // Create file
+    // Create a new file
     function createFile() {
       const filename = document.getElementById('newFilename').value.trim();
       const content = document.getElementById('newContent').value.trim();
-      if (!filename || !content) return alert('Filename and content required');
+      if (!filename || !content) {
+        alert('Please enter a filename and content.');
+        return;
+      }
+      if (!/\.(txt|js|html)$/.test(filename)) {
+        alert('Filename must end with .txt, .js, or .html');
+        return;
+      }
       fetch('/files/write', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -356,12 +538,15 @@
         if (data.success) {
           closeModal();
           loadFiles();
-          alert('File created');
+          alert('File created successfully!');
+        } else {
+          alert('Error: ' + data.message);
         }
-      });
+      })
+      .catch(error => console.error('Error creating file:', error));
     }
 
-    // Open file
+    // Open file for editing
     function openFile(filename) {
       fetch(`/files/read?filename=${encodeURIComponent(filename)}`)
         .then(response => response.json())
@@ -369,15 +554,22 @@
           if (data.success) {
             currentFilename = filename;
             document.getElementById('editFilename').textContent = filename;
-            document.getElementById('editContent').value = data.content;
+            document.getElementById('editContent').value = data.content || '';
             document.getElementById('editModal').style.display = 'flex';
+          } else {
+            alert('Error: ' + data.message);
           }
-        });
+        })
+        .catch(error => console.error('Error opening file:', error));
     }
 
-    // Save file
+    // Save edited file
     function saveFile() {
       const content = document.getElementById('editContent').value;
+      if (!content) {
+        alert('Please enter some content to save.');
+        return;
+      }
       fetch('/files/write', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -388,14 +580,17 @@
         if (data.success) {
           closeModal();
           loadFiles();
-          alert('File saved');
+          alert('File saved successfully!');
+        } else {
+          alert('Error: ' + data.message);
         }
-      });
+      })
+      .catch(error => console.error('Error saving file:', error));
     }
 
     // Delete file
     function deleteFile(filename) {
-      if (confirm('Confirm delete?')) {
+      if (confirm(`Are you sure you want to delete ${filename}?`)) {
         fetch('/files/delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -405,10 +600,19 @@
         .then(data => {
           if (data.success) {
             loadFiles();
-            alert('File deleted');
+            alert('File deleted successfully!');
+          } else {
+            alert('Error: ' + data.message);
           }
-        });
+        })
+        .catch(error => console.error('Error deleting file:', error));
       }
+    }
+
+    // Close modal
+    function closeModal() {
+      const modals = document.querySelectorAll('.modal');
+      modals.forEach(modal => modal.style.display = 'none');
     }
 
     // Load sales
@@ -417,9 +621,10 @@
         .then(response => response.json())
         .then(data => {
           if (data.success) {
+            salesData = data.sales;
             const tableBody = document.getElementById('salesTable').querySelector('tbody');
             tableBody.innerHTML = '';
-            data.sales.forEach(sale => {
+            salesData.forEach(sale => {
               const row = document.createElement('tr');
               row.innerHTML = `
                 <td>${sale.discord}</td>
@@ -431,18 +636,23 @@
               tableBody.appendChild(row);
             });
             document.getElementById('totalProfits').textContent = data.total.toFixed(2);
-            renderChart(data.sales);
+
+            // Update chart
+            drawSalesChart(salesData);
+          } else {
+            alert('Error loading sales: ' + data.message);
           }
-        });
+        })
+        .catch(error => console.error('Error loading sales:', error));
     }
 
-    // Log sale (added date field)
+    // Log sale
     function logSale() {
       const discord = document.getElementById('clientDiscord').value.trim();
       const bypassType = document.getElementById('bypassType').value;
       const amount = parseFloat(document.getElementById('amount').value);
       const date = document.getElementById('saleDate').value;
-      if (!discord || !bypassType || isNaN(amount) || amount <= 0 || !date) {
+      if (!discord || !bypassType || isNaN(amount) || amount <= 0) {
         alert('Please fill all fields correctly.');
         return;
       }
@@ -464,53 +674,97 @@
           alert('Error: ' + data.message);
         }
       })
-      .catch(error => {
-        console.error('Error logging sale:', error);
-        alert('Failed to log sale. Check console.');
-      });
-    }
-
-    // Render sales chart
-    function renderChart(sales) {
-      const dataPoints = sales.map(sale => ({ label: sale.timestamp, y: sale.amount }));
-      const chart = new CanvasJS.Chart("chartContainer", {
-        animationEnabled: true,
-        title: { text: "Sales Over Time" },
-        axisY: { title: "Amount (USD)" },
-        data: [{
-          type: "column",
-          dataPoints: dataPoints
-        }]
-      });
-      chart.render();
+      .catch(error => console.error('Error logging sale:', error));
     }
 
     // Export to CSV
     function exportToCSV() {
-      fetch('/sales/list')
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            let csv = 'Client Discord,Bypass Type,Amount,Date,Timestamp\n';
-            data.sales.forEach(sale => {
-              csv += `${sale.discord},${sale.bypassType},$${sale.amount.toFixed(2)},${sale.date || 'N/A'},${sale.timestamp}\n`;
-            });
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'sales.csv';
-            a.click();
-            URL.revokeObjectURL(url);
-          }
-        });
+      let csv = 'Client Discord,Bypass Type,Amount (USD),Date,Timestamp\n';
+      salesData.forEach(sale => {
+        csv += `${sale.discord},${sale.bypassType},$${sale.amount.toFixed(2)},${sale.date || 'N/A'},${sale.timestamp}\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'sales.csv';
+      a.click();
+      URL.revokeObjectURL(url);
     }
 
-    // Load data on page load
-    window.onload = () => {
-      loadFiles();
-      loadSales();
-    };
+    // Filter sales by date
+    function filterSales() {
+      const startDate = prompt('Enter start date (YYYY-MM-DD):');
+      const endDate = prompt('Enter end date (YYYY-MM-DD):');
+      if (startDate && endDate) {
+        const filtered = salesData.filter(sale => {
+          const saleDate = new Date(sale.timestamp).toISOString().split('T')[0];
+          return saleDate >= startDate && saleDate <= endDate;
+        });
+        drawSalesChart(filtered);
+        // Update table with filtered data
+        const tableBody = document.getElementById('salesTable').querySelector('tbody');
+        tableBody.innerHTML = '';
+        filtered.forEach(sale => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${sale.discord}</td>
+            <th>${sale.bypassType}</th>
+            <td>$${sale.amount.toFixed(2)}</td>
+            <td>${sale.date || 'N/A'}</td>
+            <td>${new Date(sale.timestamp).toLocaleString()}</td>
+          `;
+          tableBody.appendChild(row);
+        });
+        const total = filtered.reduce((sum, sale) => sum + sale.amount, 0);
+        document.getElementById('totalProfits').textContent = total.toFixed(2);
+      }
+    }
+
+    // Draw sales chart
+    let chart;
+    function drawSalesChart(data) {
+      const ctx = document.getElementById('salesChart').getContext('2d');
+      if (chart) chart.destroy();
+      const dates = data.map(sale => new Date(sale.timestamp).toLocaleDateString());
+      const amounts = data.map(sale => sale.amount);
+      chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: dates,
+          datasets: [{
+            label: 'Sales Amount ($)',
+            data: amounts,
+            backgroundColor: 'rgba(33, 150, 243, 0.6)',
+            borderColor: 'rgba(33, 150, 243, 1)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          },
+          responsive: true,
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top'
+            }
+          }
+        }
+      });
+    }
+
+    // Close modal
+    function closeModal() {
+      const modals = document.querySelectorAll('.modal');
+      modals.forEach(modal => modal.style.display = 'none');
+    }
+
+    // Load files on page load
+    window.onload = loadFiles;
   </script>
 </body>
 </html>
