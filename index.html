@@ -1,35 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login</title>
-  <style>
-    body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f0f0f0; }
-    .login-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    input { display: block; margin: 10px 0; padding: 8px; width: 200px; }
-    button { padding: 8px 16px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
-    button:hover { background-color: #45a049; }
-  </style>
+    <meta charset="UTF-8">
+    <title>Secret Key Generator</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="login-container">
-    <h2>Login</h2>
-    <input type="text" id="username" placeholder="Username">
-    <input type="password" id="password" placeholder="Password">
-    <button onclick="login()">Login</button>
-    <p id="message"></p>
-  </div>
-  <script>
-    function login() {
-      const username = document.getElementById('username').value;
-      const password = document.getElementById('password').value;
-      if (username === 'admin' && password === 'password123') {
-        window.location.href = '/dashboard.html';
-      } else {
-        document.getElementById('message').innerText = 'Invalid credentials';
-      }
-    }
-  </script>
+    <h1>Secret Key Generator</h1>
+    <button id="generateBtn">Generate</button>
+    <div id="key">Your secret key will appear here</div>
+
+    <script src="script.js"></script>
 </body>
 </html>
